@@ -251,14 +251,7 @@ const Register = () => {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t text-center">
-            <p className="text-sm text-muted-foreground">
-              Já tem uma conta?{" "}
-              <a href="/auth" className="text-primary font-medium hover:underline">
-                Fazer login
-              </a>
-            </p>
-          </div>
+          
         </CardContent>
       </Card>
     </div>;
