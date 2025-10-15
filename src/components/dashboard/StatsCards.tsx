@@ -14,26 +14,41 @@ export const StatsCards = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Buscar todos os prêmios cadastrados
+        // Buscar todos os prêmios com percentual de comissão
         const { data: prizes } = await sb
           .from("prizes")
-          .select("prize_value");
+          .select("id, prize_value, platform_commission_percentage");
 
-        // Calcular soma total dos prêmios
-        const totalPrizeValue = prizes?.reduce(
-          (sum, prize) => sum + Number(prize.prize_value || 0),
-          0
-        ) || 0;
+        const allPrizes = prizes || [];
 
-        // Calcular comissão (10% do valor do prêmio)
-        const commission = totalPrizeValue * 0.1;
+        // Buscar todas as raspadinhas vendidas/resgatadas
+        const { data: scratchCards } = await sb
+          .from("scratch_cards")
+          .select("prize_id, status")
+          .in("status", ["registered", "redeemed"]);
 
-        // Calcular lucro da empresa (90% do valor do prêmio)
-        const profit = totalPrizeValue * 0.9;
+        const soldCards = scratchCards || [];
+
+        // Calcular totais baseado nas raspadinhas vendidas com comissão customizada
+        let totalCommission = 0;
+        let totalProfit = 0;
+
+        for (const card of soldCards) {
+          const prize = allPrizes.find(p => p.id === card.prize_id);
+          if (prize) {
+            const prizeValue = Number(prize.prize_value || 0);
+            const commissionPercentage = Number(prize.platform_commission_percentage || 10);
+            const commission = prizeValue * (commissionPercentage / 100);
+            const profit = prizeValue - commission;
+
+            totalCommission += commission;
+            totalProfit += profit;
+          }
+        }
 
         setStats({
-          companyProfit: profit,
-          platformCommission: commission,
+          companyProfit: totalProfit,
+          platformCommission: totalCommission,
         });
       } catch (error) {
         console.error("Error fetching stats:", error);
@@ -60,7 +75,7 @@ export const StatsCards = () => {
             })}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            90% do valor dos prêmios cadastrados
+            Lucro total das empresas (valor - comissão)
           </p>
         </CardContent>
       </Card>
@@ -80,7 +95,7 @@ export const StatsCards = () => {
             })}
           </div>
           <p className="text-xs text-blue-900 mt-2">
-            10% do valor dos prêmios cadastrados
+            Comissão baseada nos percentuais configurados
           </p>
         </CardContent>
       </Card>

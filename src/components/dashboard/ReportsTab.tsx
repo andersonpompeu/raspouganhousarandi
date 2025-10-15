@@ -28,10 +28,10 @@ export const ReportsTab = () => {
 
   const fetchReportData = async () => {
     try {
-      // Buscar todos os prêmios
+      // Buscar todos os prêmios com percentual de comissão
       const { data: prizes, error: prizesError } = await sb
         .from("prizes")
-        .select("id, prize_value");
+        .select("id, prize_value, platform_commission_percentage");
 
       if (prizesError) throw prizesError;
 
@@ -47,18 +47,24 @@ export const ReportsTab = () => {
 
       const soldCards = scratchCards || [];
 
-      // Calcular o valor total baseado nas raspadinhas vendidas
+      // Calcular totais baseado nas raspadinhas vendidas com comissão customizada
       let totalPrizeValue = 0;
+      let totalPlatformCommission = 0;
+      let totalCompanyProfit = 0;
       
       for (const card of soldCards) {
         const prize = allPrizes.find(p => p.id === card.prize_id);
         if (prize) {
-          totalPrizeValue += Number(prize.prize_value || 0);
+          const prizeValue = Number(prize.prize_value || 0);
+          const commissionPercentage = Number(prize.platform_commission_percentage || 10);
+          const commission = prizeValue * (commissionPercentage / 100);
+          const profit = prizeValue - commission;
+          
+          totalPrizeValue += prizeValue;
+          totalPlatformCommission += commission;
+          totalCompanyProfit += profit;
         }
       }
-
-      const totalPlatformCommission = totalPrizeValue * 0.1; // 10%
-      const totalCompanyProfit = totalPrizeValue * 0.9; // 90%
 
       // Buscar empresas
       const { data: companies, error: companiesError } = await sb
@@ -80,10 +86,20 @@ export const ReportsTab = () => {
           const soldCompanyCards = companyCards || [];
           
           let companyTotalValue = 0;
+          let companyCommission = 0;
+          let companyProfit = 0;
+          
           for (const card of soldCompanyCards) {
             const prize = allPrizes.find(p => p.id === card.prize_id);
             if (prize) {
-              companyTotalValue += Number(prize.prize_value || 0);
+              const prizeValue = Number(prize.prize_value || 0);
+              const commissionPercentage = Number(prize.platform_commission_percentage || 10);
+              const commission = prizeValue * (commissionPercentage / 100);
+              const profit = prizeValue - commission;
+              
+              companyTotalValue += prizeValue;
+              companyCommission += commission;
+              companyProfit += profit;
             }
           }
 
@@ -91,8 +107,8 @@ export const ReportsTab = () => {
             id: company.id,
             name: company.name,
             totalPrizeValue: companyTotalValue,
-            companyProfit: companyTotalValue * 0.9,
-            platformCommission: companyTotalValue * 0.1,
+            companyProfit: companyProfit,
+            platformCommission: companyCommission,
             prizesCount: soldCompanyCards.length,
           };
         })
@@ -143,7 +159,7 @@ export const ReportsTab = () => {
               Lucro das Empresas
             </CardTitle>
             <CardDescription>
-              90% do valor dos prêmios vendidos/resgatados
+              Lucro total das empresas (valor - comissão)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -166,7 +182,7 @@ export const ReportsTab = () => {
               Comissão da Plataforma
             </CardTitle>
             <CardDescription>
-              10% do valor dos prêmios vendidos/resgatados
+              Comissão total baseada nos percentuais configurados
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -216,13 +232,13 @@ export const ReportsTab = () => {
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Lucro (90%)</p>
+                      <p className="text-sm text-muted-foreground">Lucro</p>
                       <p className="font-semibold text-lg text-green-600">
                         R$ {formatCurrency(company.companyProfit)}
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Comissão (10%)</p>
+                      <p className="text-sm text-muted-foreground">Comissão</p>
                       <p className="font-semibold text-lg text-blue-600">
                         R$ {formatCurrency(company.platformCommission)}
                       </p>

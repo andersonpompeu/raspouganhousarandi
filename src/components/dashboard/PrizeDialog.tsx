@@ -34,6 +34,7 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
     total_quantity: "100",
     distributed_quantity: "0",
     prize_value: "0.00",
+    platform_commission_percentage: "10",
   });
   const [loading, setLoading] = useState(false);
 
@@ -45,6 +46,7 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
         total_quantity: prize.total_quantity.toString(),
         distributed_quantity: prize.distributed_quantity.toString(),
         prize_value: prize.prize_value?.toString() || "0.00",
+        platform_commission_percentage: prize.platform_commission_percentage?.toString() || "10",
       });
     } else {
       setFormData({
@@ -53,6 +55,7 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
         total_quantity: "100",
         distributed_quantity: "0",
         prize_value: "0.00",
+        platform_commission_percentage: "10",
       });
     }
   }, [prize]);
@@ -63,6 +66,11 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
 
     try {
       const prizeValue = parseFloat(formData.prize_value);
+      const commissionPercentage = parseFloat(formData.platform_commission_percentage);
+      
+      // Calcular comissão e lucro baseado no percentual customizado
+      const commission = prizeValue * (commissionPercentage / 100);
+      const costToCompany = prizeValue - commission;
       
       const dataToSave = {
         name: formData.name,
@@ -70,8 +78,8 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
         total_quantity: parseInt(formData.total_quantity),
         distributed_quantity: parseInt(formData.distributed_quantity),
         prize_value: prizeValue,
-        cost_to_company: prizeValue * 0.9, // 90% do valor do prêmio (lucro da empresa)
-        platform_commission_percentage: 10, // Sempre 10%
+        cost_to_company: costToCompany,
+        platform_commission_percentage: commissionPercentage,
       };
 
       if (prize) {
@@ -154,22 +162,54 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="prize_value">Valor do Prêmio (R$)</Label>
-            <Input
-              id="prize_value"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.prize_value}
-              onChange={(e) => setFormData({ ...formData, prize_value: e.target.value })}
-              placeholder="Ex: 30.00"
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              A comissão da plataforma (10%) será calculada automaticamente
-            </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="prize_value">Valor do Prêmio (R$)</Label>
+              <Input
+                id="prize_value"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.prize_value}
+                onChange={(e) => setFormData({ ...formData, prize_value: e.target.value })}
+                placeholder="Ex: 30.00"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="commission">Comissão da Plataforma (%)</Label>
+              <Input
+                id="commission"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={formData.platform_commission_percentage}
+                onChange={(e) => setFormData({ ...formData, platform_commission_percentage: e.target.value })}
+                placeholder="Ex: 10"
+                required
+              />
+            </div>
           </div>
+
+          {formData.prize_value && formData.platform_commission_percentage && (
+            <div className="p-3 bg-muted rounded-lg space-y-1">
+              <p className="text-xs text-muted-foreground">Cálculo automático:</p>
+              <div className="flex justify-between text-sm">
+                <span>Comissão da Plataforma:</span>
+                <span className="font-semibold text-blue-600">
+                  R$ {(parseFloat(formData.prize_value) * parseFloat(formData.platform_commission_percentage) / 100).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Lucro da Empresa:</span>
+                <span className="font-semibold text-green-600">
+                  R$ {(parseFloat(formData.prize_value) - (parseFloat(formData.prize_value) * parseFloat(formData.platform_commission_percentage) / 100)).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
