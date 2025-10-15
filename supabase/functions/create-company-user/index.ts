@@ -8,9 +8,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('=== CREATE COMPANY USER FUNCTION STARTED ===')
+    
     // Verificar autenticação
     const authHeader = req.headers.get('Authorization')
+    console.log('Auth header present:', !!authHeader)
+    
     if (!authHeader) {
+      console.error('Missing authorization header')
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -18,6 +23,7 @@ Deno.serve(async (req) => {
     }
 
     // Criar cliente Supabase com service role para operações admin
+    console.log('Creating admin client...')
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -30,6 +36,7 @@ Deno.serve(async (req) => {
     )
 
     // Criar cliente normal para verificar o usuário atual
+    console.log('Creating user client...')
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -41,30 +48,55 @@ Deno.serve(async (req) => {
     )
 
     // Verificar se o usuário atual é admin
+    console.log('Getting current user...')
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
     
-    if (userError || !user) {
+    if (userError) {
       console.error('Error getting user:', userError)
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized: ' + userError.message }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    if (!user) {
+      console.error('No user found')
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: No user found' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    console.log('Current user ID:', user.id)
+
     // Verificar se o usuário tem role de admin
+    console.log('Checking user role...')
     const { data: roleData, error: roleError } = await supabaseClient
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
       .maybeSingle()
 
-    if (roleError || roleData?.role !== 'admin') {
+    console.log('Role data:', roleData)
+    console.log('Role error:', roleError)
+
+    if (roleError) {
+      console.error('Error fetching role:', roleError)
+      return new Response(
+        JSON.stringify({ error: 'Error checking permissions: ' + roleError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (roleData?.role !== 'admin') {
       console.error('User is not admin:', { userId: user.id, role: roleData?.role })
       return new Response(
-        JSON.stringify({ error: 'Forbidden: Admin access required' }),
+        JSON.stringify({ error: 'Forbidden: Admin access required. Current role: ' + (roleData?.role || 'none') }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log('User is admin, proceeding...')
 
     // Obter dados da requisição
     const { email, password, companyId } = await req.json()
