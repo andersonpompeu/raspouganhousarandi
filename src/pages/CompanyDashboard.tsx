@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package, CheckCircle, LogOut, BarChart3 } from "lucide-react";
+import { Loader2, Package, CheckCircle, LogOut, BarChart3, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -357,26 +357,49 @@ export default function CompanyDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {recentRedemptions.map((redemption: any) => (
-                  <div key={redemption.id} className="p-3 bg-muted rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-semibold">{redemption.scratch_cards?.prizes?.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {redemption.scratch_cards?.registrations?.[0]?.customer_name}
-                        </p>
+                {recentRedemptions.map((redemption: any) => {
+                  const customerPhone = redemption.scratch_cards?.registrations?.[0]?.customer_phone;
+                  const whatsappNumber = customerPhone 
+                    ? customerPhone.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '55$1$2')
+                    : null;
+                  
+                  return (
+                    <div key={redemption.id} className="p-3 bg-muted rounded-lg">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1">
+                          <p className="font-semibold">{redemption.scratch_cards?.prizes?.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {redemption.scratch_cards?.registrations?.[0]?.customer_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Código: {redemption.scratch_cards?.serial_code}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(redemption.redeemed_at).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                          {whatsappNumber && (
+                            <a
+                              href={`https://wa.me/${whatsappNumber}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                              WhatsApp
+                            </a>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(redemption.redeemed_at).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
