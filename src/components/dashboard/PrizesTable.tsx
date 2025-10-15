@@ -19,6 +19,7 @@ type Prize = {
   prize_value: number;
   cost_to_company: number;
   platform_commission_percentage: number;
+  actual_distributed?: number; // Contagem real de raspadinhas vendidas/resgatadas
 };
 
 export const PrizesTable = () => {
@@ -35,7 +36,24 @@ export const PrizesTable = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setPrizes(data || []);
+      
+      // Buscar a contagem real de raspadinhas vendidas/resgatadas para cada prêmio
+      const prizesWithActualCount = await Promise.all(
+        (data || []).map(async (prize: Prize) => {
+          const { count } = await sb
+            .from("scratch_cards")
+            .select("*", { count: "exact", head: true })
+            .eq("prize_id", prize.id)
+            .in("status", ["registered", "redeemed"]);
+          
+          return {
+            ...prize,
+            actual_distributed: count || 0,
+          };
+        })
+      );
+      
+      setPrizes(prizesWithActualCount);
     } catch (error: any) {
       toast.error("Erro ao carregar prêmios");
     } finally {
@@ -103,8 +121,9 @@ export const PrizesTable = () => {
               </TableHeader>
               <TableBody>
                 {prizes.map((prize) => {
+                  const distributedCount = prize.actual_distributed ?? prize.distributed_quantity;
                   const percentage = prize.total_quantity > 0
-                    ? Math.round((prize.distributed_quantity / prize.total_quantity) * 100)
+                    ? Math.round((distributedCount / prize.total_quantity) * 100)
                     : 0;
 
                   return (
@@ -126,7 +145,7 @@ export const PrizesTable = () => {
                       <TableCell>
                         {Number(prize.platform_commission_percentage).toFixed(1)}%
                       </TableCell>
-                      <TableCell>{prize.distributed_quantity}</TableCell>
+                      <TableCell>{distributedCount}</TableCell>
                       <TableCell>{prize.total_quantity}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
