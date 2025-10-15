@@ -27,8 +27,21 @@ const Auth = () => {
 
       if (error) throw error;
 
+      // Verificar role do usuário
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+
       toast.success("Login realizado com sucesso!");
-      navigate("/dashboard");
+      
+      // Redirecionar baseado no role
+      if (roleData?.role === 'company_partner') {
+        navigate("/company");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error: any) {
       toast.error(error.message || "Erro ao fazer login");
     } finally {

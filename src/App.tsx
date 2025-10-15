@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Validate from "./pages/Validate";
 import Register from "./pages/Register";
 import RedeemPrize from "./pages/RedeemPrize";
+import CompanyDashboard from "./pages/CompanyDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/company" element={<CompanyDashboard />} />
           <Route path="/validate/:serial" element={<Validate />} />
           <Route path="/cadastro" element={<Register />} />
           <Route path="/validar-entrega" element={<RedeemPrize />} />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,24 @@ const RedeemPrize = () => {
   
   const [attendantName, setAttendantName] = useState("");
   const [notes, setNotes] = useState("");
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+
+  // Carregar company_id do usuário se for company_partner
+  useEffect(() => {
+    const loadUserCompany = async () => {
+      if (!user) return;
+
+      const { data } = await sb
+        .from('user_roles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      setUserCompanyId(data?.company_id || null);
+    };
+
+    loadUserCompany();
+  }, [user]);
 
   // Redirect if not authenticated
   if (!authLoading && !user) {
@@ -76,7 +94,7 @@ const RedeemPrize = () => {
       
       setLoading(true);
 
-      const { data, error: fetchError } = await sb
+      let query = sb
         .from("scratch_cards")
         .select(`
           *,
@@ -84,8 +102,14 @@ const RedeemPrize = () => {
           companies(name),
           registrations(customer_name, customer_email, customer_phone)
         `)
-        .eq("serial_code", validated.serialCode)
-        .maybeSingle();
+        .eq("serial_code", validated.serialCode);
+
+      // Se o usuário tem company_id, filtrar apenas raspadinhas da empresa dele
+      if (userCompanyId) {
+        query = query.eq("company_id", userCompanyId);
+      }
+
+      const { data, error: fetchError } = await query.maybeSingle();
 
       if (fetchError) throw fetchError;
 
