@@ -186,6 +186,32 @@ export default function CompanyDashboard() {
 
       if (updateError) throw updateError;
 
+      // Send WhatsApp notification (non-blocking)
+      try {
+        console.log('📱 Enviando notificação WhatsApp para o cliente...');
+        const { error: whatsappError } = await supabase.functions.invoke(
+          'send-whatsapp-notification',
+          {
+            body: {
+              customerName: scratchCard.registrations[0].customer_name,
+              customerPhone: scratchCard.registrations[0].customer_phone,
+              prizeName: scratchCard.prizes.name,
+              serialCode: scratchCard.serial_code,
+            }
+          }
+        );
+
+        if (whatsappError) {
+          console.error('❌ Erro ao enviar WhatsApp:', whatsappError);
+          // Don't block the main flow - just log the error
+        } else {
+          console.log('✅ Notificação WhatsApp enviada com sucesso!');
+        }
+      } catch (whatsappError) {
+        console.error('💥 Falha ao enviar notificação WhatsApp:', whatsappError);
+        // Continue normally even if WhatsApp fails
+      }
+
       setRedemptionSuccess(true);
       setSerialCode("");
       setAttendantName("");
@@ -194,7 +220,7 @@ export default function CompanyDashboard() {
 
       toast({
         title: "✓ Entrega confirmada!",
-        description: "Prêmio entregue com sucesso",
+        description: "Prêmio entregue com sucesso. Cliente notificado via WhatsApp.",
       });
     } catch (error: any) {
       toast({
