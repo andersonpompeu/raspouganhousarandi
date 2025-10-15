@@ -34,8 +34,6 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
     total_quantity: "100",
     distributed_quantity: "0",
     prize_value: "0.00",
-    cost_to_company: "0.00",
-    platform_commission_percentage: "10.00",
   });
   const [loading, setLoading] = useState(false);
 
@@ -47,8 +45,6 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
         total_quantity: prize.total_quantity.toString(),
         distributed_quantity: prize.distributed_quantity.toString(),
         prize_value: prize.prize_value?.toString() || "0.00",
-        cost_to_company: prize.cost_to_company?.toString() || "0.00",
-        platform_commission_percentage: prize.platform_commission_percentage?.toString() || "10.00",
       });
     } else {
       setFormData({
@@ -57,8 +53,6 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
         total_quantity: "100",
         distributed_quantity: "0",
         prize_value: "0.00",
-        cost_to_company: "0.00",
-        platform_commission_percentage: "10.00",
       });
     }
   }, [prize]);
@@ -68,14 +62,16 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
     setLoading(true);
 
     try {
+      const prizeValue = parseFloat(formData.prize_value);
+      
       const dataToSave = {
         name: formData.name,
         description: formData.description || null,
         total_quantity: parseInt(formData.total_quantity),
         distributed_quantity: parseInt(formData.distributed_quantity),
-        prize_value: parseFloat(formData.prize_value),
-        cost_to_company: parseFloat(formData.cost_to_company),
-        platform_commission_percentage: parseFloat(formData.platform_commission_percentage),
+        prize_value: prizeValue,
+        cost_to_company: prizeValue * 0.9, // 90% do valor do prêmio (lucro da empresa)
+        platform_commission_percentage: 10, // Sempre 10%
       };
 
       if (prize) {
@@ -158,57 +154,20 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="prize_value">Valor do Prêmio (R$)</Label>
-              <Input
-                id="prize_value"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.prize_value}
-                onChange={(e) => setFormData({ ...formData, prize_value: e.target.value })}
-                placeholder="Ex: 30.00"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Valor que o cliente recebe
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cost_to_company">Custo para Empresa (R$)</Label>
-              <Input
-                id="cost_to_company"
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.cost_to_company}
-                onChange={(e) => setFormData({ ...formData, cost_to_company: e.target.value })}
-                placeholder="Ex: 15.00"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Custo real ao entregar o prêmio
-              </p>
-            </div>
-          </div>
-
           <div className="space-y-2">
-            <Label htmlFor="platform_commission">Comissão da Plataforma (%)</Label>
+            <Label htmlFor="prize_value">Valor do Prêmio (R$)</Label>
             <Input
-              id="platform_commission"
+              id="prize_value"
               type="number"
               step="0.01"
               min="0"
-              max="100"
-              value={formData.platform_commission_percentage}
-              onChange={(e) => setFormData({ ...formData, platform_commission_percentage: e.target.value })}
-              placeholder="Ex: 10.00"
+              value={formData.prize_value}
+              onChange={(e) => setFormData({ ...formData, prize_value: e.target.value })}
+              placeholder="Ex: 30.00"
               required
             />
             <p className="text-xs text-muted-foreground">
-              Percentual sobre o lucro da empresa (Preço - Custo)
+              A comissão da plataforma (10%) será calculada automaticamente
             </p>
           </div>
 
