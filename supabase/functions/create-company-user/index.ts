@@ -35,21 +35,20 @@ Deno.serve(async (req) => {
       }
     )
 
+    // Extrair o token JWT do header Authorization
+    const token = authHeader.replace('Bearer ', '')
+    console.log('Token extracted, length:', token.length)
+
     // Criar cliente normal para verificar o usuário atual
     console.log('Creating user client...')
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    // Verificar se o usuário atual é admin
-    console.log('Getting current user...')
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    // Verificar se o usuário atual é admin usando o token
+    console.log('Getting current user from JWT...')
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
     
     if (userError) {
       console.error('Error getting user:', userError)
@@ -69,9 +68,9 @@ Deno.serve(async (req) => {
 
     console.log('Current user ID:', user.id)
 
-    // Verificar se o usuário tem role de admin
+    // Verificar se o usuário tem role de admin usando o admin client
     console.log('Checking user role...')
-    const { data: roleData, error: roleError } = await supabaseClient
+    const { data: roleData, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
