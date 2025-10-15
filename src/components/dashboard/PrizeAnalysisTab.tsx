@@ -10,15 +10,17 @@ const sb = supabase as any;
 type PrizeAnalysis = {
   id: string;
   name: string;
-  prizeValue: number;
+  costToCompany: number;
   totalQuantity: number;
   distributedQuantity: number;
-  cardsWithPrize: number;
   redeemedCount: number;
   redemptionRate: number;
-  totalCost: number;
-  averageCostPerRedemption: number;
-  impactOnProfit: number;
+  totalCostToCompany: number;
+  totalRevenue: number;
+  netProfit: number;
+  profitMargin: number;
+  roi: number;
+  efficiency: number;
   recommendation: "increase" | "decrease" | "maintain";
 };
 
@@ -34,58 +36,67 @@ export const PrizeAnalysisTab = () => {
           id,
           name,
           description,
-          prize_value,
           cost_to_company,
-          total_quantity,
-          distributed_quantity
+          total_quantity
         `);
 
       if (error) throw error;
 
       const analysis = await Promise.all(
         (prizesData || []).map(async (prize: any) => {
-          // Buscar raspadinhas com este prêmio
+          // Buscar raspadinhas com este prêmio (distribuídas = registered ou redeemed)
           const { data: cards } = await sb
             .from("scratch_cards")
             .select("id, status")
-            .eq("prize_id", prize.id);
+            .eq("prize_id", prize.id)
+            .in("status", ["registered", "redeemed"]);
 
-          const cardsWithPrize = cards?.length || 0;
+          const distributedQuantity = cards?.length || 0;
           const redeemedCards = cards?.filter((c: any) => c.status === "redeemed") || [];
           const redeemedCount = redeemedCards.length;
-          const redemptionRate = cardsWithPrize > 0 ? (redeemedCount / cardsWithPrize) * 100 : 0;
-          const totalCost = redeemedCount * Number(prize.prize_value);
-          const averageCostPerRedemption = redeemedCount > 0 ? totalCost / redeemedCount : 0;
+          
+          // Taxa de resgate sobre distribuídos
+          const redemptionRate = distributedQuantity > 0 ? (redeemedCount / distributedQuantity) * 100 : 0;
 
-          // Calcular impacto no lucro (negativo porque é custo)
-          const impactOnProfit = -totalCost;
+          // Cálculos financeiros corretos
+          const costToCompany = Number(prize.cost_to_company);
+          const totalCostToCompany = redeemedCount * costToCompany; // Custo apenas dos resgatados
+          const totalRevenue = distributedQuantity * 5.00; // R$ 5 por raspadinha vendida
+          const netProfit = totalRevenue - totalCostToCompany; // Lucro líquido real
+          const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+          const roi = totalCostToCompany > 0 ? ((netProfit / totalCostToCompany) * 100) : 0;
+          const efficiency = redeemedCount > 0 ? (totalRevenue / redeemedCount) : 0;
 
-          // Recomendação baseada em taxa de resgate e custo
+          // Recomendação baseada em margem de lucro
           let recommendation: "increase" | "decrease" | "maintain" = "maintain";
-          if (redemptionRate > 30) {
-            recommendation = "decrease"; // Muitos resgates, pode estar custando muito
-          } else if (redemptionRate < 10 && Number(prize.prize_value) < 10) {
-            recommendation = "increase"; // Poucos resgates e baixo valor, pode aumentar
+          if (distributedQuantity === 0) {
+            recommendation = "maintain"; // Sem dados suficientes
+          } else if (profitMargin > 60) {
+            recommendation = "increase"; // Ótima margem, pode aumentar distribuição
+          } else if (profitMargin < 20) {
+            recommendation = "decrease"; // Margem baixa, reduzir para controlar custos
           }
 
           return {
             id: prize.id,
             name: prize.name,
-            prizeValue: Number(prize.prize_value),
+            costToCompany,
             totalQuantity: prize.total_quantity,
-            distributedQuantity: prize.distributed_quantity,
-            cardsWithPrize,
+            distributedQuantity,
             redeemedCount,
             redemptionRate,
-            totalCost,
-            averageCostPerRedemption,
-            impactOnProfit,
+            totalCostToCompany,
+            totalRevenue,
+            netProfit,
+            profitMargin,
+            roi,
+            efficiency,
             recommendation,
           };
         })
       );
 
-      setPrizes(analysis.sort((a, b) => Math.abs(b.impactOnProfit) - Math.abs(a.impactOnProfit)));
+      setPrizes(analysis.sort((a, b) => b.netProfit - a.netProfit));
     } catch (error: any) {
       console.error("Error fetching prize analysis:", error);
       toast.error("Erro ao carregar análise de prêmios");
@@ -118,30 +129,58 @@ export const PrizeAnalysisTab = () => {
     }
   };
 
-  const totalImpact = prizes.reduce((sum, p) => sum + p.impactOnProfit, 0);
+  const totalNetProfit = prizes.reduce((sum, p) => sum + p.netProfit, 0);
+  const totalRevenue = prizes.reduce((sum, p) => sum + p.totalRevenue, 0);
+  const totalCost = prizes.reduce((sum, p) => sum + p.totalCostToCompany, 0);
 
   return (
     <div className="space-y-6">
-      {/* Resumo do Impacto */}
-      <Card className="border-orange-200 bg-orange-50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-orange-600" />
-            Impacto Total dos Prêmios
-          </CardTitle>
-          <CardDescription>
-            Custo total gerado pelos resgates de prêmios
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-orange-600">
-            R$ {Math.abs(totalImpact).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Custo de comissões sobre prêmios resgatados
-          </p>
-        </CardContent>
-      </Card>
+      {/* Resumo Financeiro */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-green-800">Receita Total</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">
+              R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Vendas de raspadinhas distribuídas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-orange-800">Custo Total</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-700">
+              R$ {totalCost.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Prêmios resgatados pelas empresas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className={totalNetProfit >= 0 ? "border-blue-200 bg-blue-50" : "border-red-200 bg-red-50"}>
+          <CardHeader className="pb-3">
+            <CardTitle className={`text-sm font-medium ${totalNetProfit >= 0 ? "text-blue-800" : "text-red-800"}`}>
+              Lucro Líquido
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${totalNetProfit >= 0 ? "text-blue-700" : "text-red-700"}`}>
+              R$ {totalNetProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Receita - Custo dos prêmios
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Análise Individual de Prêmios */}
       <Card>
@@ -168,22 +207,22 @@ export const PrizeAnalysisTab = () => {
                       {getRecommendationBadge(prize.recommendation)}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Valor do prêmio: R$ {prize.prizeValue.toFixed(2)}
+                      Custo unitário: R$ {prize.costToCompany.toFixed(2)}
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-red-600">
-                      R$ {prize.totalCost.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <div className={`text-lg font-bold ${prize.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      R$ {prize.netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
-                    <p className="text-xs text-muted-foreground">Custo total</p>
+                    <p className="text-xs text-muted-foreground">Lucro líquido</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t text-sm">
                   <div>
-                    <p className="text-muted-foreground">Disponíveis</p>
+                    <p className="text-muted-foreground">Distribuídos</p>
                     <p className="font-semibold">
-                      {prize.cardsWithPrize}
+                      {prize.distributedQuantity}
                     </p>
                   </div>
                   <div>
@@ -199,39 +238,74 @@ export const PrizeAnalysisTab = () => {
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Custo Médio</p>
+                    <p className="text-muted-foreground">Margem Lucro</p>
+                    <p className={`font-semibold ${prize.profitMargin >= 50 ? "text-green-600" : prize.profitMargin >= 20 ? "text-yellow-600" : "text-red-600"}`}>
+                      {prize.profitMargin.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">ROI</p>
+                    <p className={`font-semibold ${prize.roi >= 100 ? "text-green-600" : prize.roi >= 0 ? "text-yellow-600" : "text-red-600"}`}>
+                      {prize.roi.toFixed(0)}%
+                    </p>
+                  </div>
+                </div>
+
+                {/* Detalhes Financeiros */}
+                <div className="grid grid-cols-3 gap-3 pt-3 border-t text-sm bg-muted/30 p-3 rounded">
+                  <div>
+                    <p className="text-muted-foreground text-xs">Receita</p>
+                    <p className="font-semibold text-green-700">
+                      R$ {prize.totalRevenue.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Custo Total</p>
+                    <p className="font-semibold text-orange-700">
+                      R$ {prize.totalCostToCompany.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Eficiência</p>
                     <p className="font-semibold">
-                      R$ {prize.averageCostPerRedemption.toFixed(2)}
+                      R$ {prize.efficiency.toFixed(2)}
                     </p>
                   </div>
                 </div>
 
                 {/* Análise e Recomendação */}
                 <div className="pt-3 border-t bg-gray-50 p-3 rounded">
-                  {prize.cardsWithPrize === 0 ? (
+                  {prize.distributedQuantity === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       ℹ️ <strong>Sem dados suficientes</strong>. Nenhuma raspadinha com este prêmio foi distribuída ainda.
                     </p>
-                  ) : prize.recommendation === "decrease" && (
-                    <p className="text-sm text-orange-700">
-                      ⚠️ <strong>Alta taxa de resgate ({prize.redemptionRate.toFixed(1)}%)</strong>. 
-                      Considere reduzir a quantidade deste prêmio para controlar custos das empresas parceiras.
-                    </p>
+                  ) : (
+                    <>
+                      {prize.recommendation === "increase" && (
+                        <p className="text-sm text-green-700">
+                          ✅ <strong>Excelente margem de lucro ({prize.profitMargin.toFixed(1)}%)</strong>. 
+                          Prêmio muito rentável! Considere aumentar a distribuição para maximizar lucros e atrair mais clientes.
+                        </p>
+                      )}
+                      {prize.recommendation === "decrease" && (
+                        <p className="text-sm text-red-700">
+                          ⚠️ <strong>Margem de lucro baixa ({prize.profitMargin.toFixed(1)}%)</strong>. 
+                          Prêmio está comprometendo rentabilidade. Considere reduzir distribuição ou renegociar custos.
+                        </p>
+                      )}
+                      {prize.recommendation === "maintain" && (
+                        <p className="text-sm text-blue-700">
+                          ℹ️ <strong>Margem equilibrada ({prize.profitMargin.toFixed(1)}%)</strong>. 
+                          Prêmio com performance saudável. Mantenha a estratégia atual.
+                        </p>
+                      )}
+                      <div className="mt-2 pt-2 border-t text-xs text-muted-foreground space-y-1">
+                        <p>• <strong>Taxa de resgate:</strong> {prize.redemptionRate.toFixed(1)}% dos distribuídos foram resgatados</p>
+                        <p>• <strong>ROI:</strong> Cada R$ 1,00 investido em prêmios gera R$ {((prize.roi / 100) + 1).toFixed(2)}</p>
+                        <p>• <strong>Eficiência:</strong> R$ {prize.efficiency.toFixed(2)} de receita por prêmio resgatado</p>
+                      </div>
+                    </>
                   )}
-                  {prize.recommendation === "increase" && (
-                    <p className="text-sm text-green-700">
-                      ✅ <strong>Baixa taxa de resgate ({prize.redemptionRate.toFixed(1)}%)</strong>. 
-                      Prêmio com bom custo-benefício, pode aumentar quantidade para atrair mais clientes.
-                    </p>
-                  )}
-                  {prize.recommendation === "maintain" && prize.cardsWithPrize > 0 && (
-                    <p className="text-sm text-blue-700">
-                      ℹ️ <strong>Taxa equilibrada</strong>. Mantenha a estratégia atual para este prêmio.
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-2">
-                    💡 <strong>Nota:</strong> O custo dos prêmios é arcado pelas empresas parceiras quando resgatados pelos clientes.
-                  </p>
                 </div>
               </div>
             ))}
