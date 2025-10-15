@@ -76,7 +76,7 @@ export default function CompanyDashboard() {
           scratch_cards!inner(
             serial_code,
             prizes(name),
-            registrations(customer_name)
+            registrations(customer_name, customer_phone)
           )
         `)
         .eq('scratch_cards.company_id', companyId)
