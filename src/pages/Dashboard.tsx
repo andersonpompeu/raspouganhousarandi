@@ -11,7 +11,6 @@ import { PrizesTable } from "@/components/dashboard/PrizesTable";
 import { RegistrationsTable } from "@/components/dashboard/RegistrationsTable";
 import { RedemptionsTable } from "@/components/dashboard/RedemptionsTable";
 import { ReportsTab } from "@/components/dashboard/ReportsTab";
-import { PrizeAnalysisTab } from "@/components/dashboard/PrizeAnalysisTab";
 import { FinancialSettingsDialog } from "@/components/dashboard/FinancialSettingsDialog";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -81,14 +80,13 @@ const Dashboard = () => {
         <StatsCards />
 
         <Tabs defaultValue="companies" className="mt-8">
-          <TabsList className="grid w-full grid-cols-8 max-w-6xl">
+          <TabsList className="grid w-full grid-cols-7 max-w-6xl">
             <TabsTrigger value="companies">Empresas</TabsTrigger>
             <TabsTrigger value="scratch-cards">Raspadinhas</TabsTrigger>
             <TabsTrigger value="prizes">Prêmios</TabsTrigger>
             <TabsTrigger value="registrations">Cadastros</TabsTrigger>
             <TabsTrigger value="redemptions">Entregas</TabsTrigger>
             <TabsTrigger value="reports">Relatórios</TabsTrigger>
-            <TabsTrigger value="prize-analysis">Análise de Prêmios</TabsTrigger>
             <TabsTrigger value="redeem" className="bg-primary/10">
               <PackageCheck className="w-4 h-4 mr-2" />
               Validar
@@ -117,10 +115,6 @@ const Dashboard = () => {
 
           <TabsContent value="reports" className="mt-6">
             <ReportsTab />
-          </TabsContent>
-
-          <TabsContent value="prize-analysis" className="mt-6">
-            <PrizeAnalysisTab />
           </TabsContent>
 
           <TabsContent value="redeem" className="mt-6">
