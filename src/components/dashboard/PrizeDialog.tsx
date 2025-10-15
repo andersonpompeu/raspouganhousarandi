@@ -32,7 +32,6 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
     name: "",
     description: "",
     total_quantity: "100",
-    distributed_quantity: "0",
     prize_value: "0.00",
     platform_commission_percentage: "10",
   });
@@ -44,7 +43,6 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
         name: prize.name,
         description: prize.description || "",
         total_quantity: prize.total_quantity.toString(),
-        distributed_quantity: prize.distributed_quantity.toString(),
         prize_value: prize.prize_value?.toString() || "0.00",
         platform_commission_percentage: prize.platform_commission_percentage?.toString() || "10",
       });
@@ -53,7 +51,6 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
         name: "",
         description: "",
         total_quantity: "100",
-        distributed_quantity: "0",
         prize_value: "0.00",
         platform_commission_percentage: "10",
       });
@@ -76,7 +73,6 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
         name: formData.name,
         description: formData.description || null,
         total_quantity: parseInt(formData.total_quantity),
-        distributed_quantity: parseInt(formData.distributed_quantity),
         prize_value: prizeValue,
         cost_to_company: costToCompany,
         platform_commission_percentage: commissionPercentage,
@@ -136,30 +132,16 @@ export const PrizeDialog = ({ open, onOpenChange, prize, onSuccess }: PrizeDialo
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="total">Quantidade Total</Label>
-              <Input
-                id="total"
-                type="number"
-                min="0"
-                value={formData.total_quantity}
-                onChange={(e) => setFormData({ ...formData, total_quantity: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="distributed">Distribuídos</Label>
-              <Input
-                id="distributed"
-                type="number"
-                min="0"
-                value={formData.distributed_quantity}
-                onChange={(e) => setFormData({ ...formData, distributed_quantity: e.target.value })}
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="total">Quantidade Total</Label>
+            <Input
+              id="total"
+              type="number"
+              min="0"
+              value={formData.total_quantity}
+              onChange={(e) => setFormData({ ...formData, total_quantity: e.target.value })}
+              required
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
