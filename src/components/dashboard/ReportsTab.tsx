@@ -37,8 +37,26 @@ export const ReportsTab = () => {
 
       const allPrizes = prizes || [];
       
-      // Calcular totais
-      const totalPrizeValue = allPrizes.reduce((sum, p) => sum + Number(p.prize_value || 0), 0);
+      // Buscar todas as raspadinhas vendidas/resgatadas
+      const { data: scratchCards, error: cardsError } = await sb
+        .from("scratch_cards")
+        .select("prize_id, status")
+        .in("status", ["registered", "redeemed"]);
+
+      if (cardsError) throw cardsError;
+
+      const soldCards = scratchCards || [];
+
+      // Calcular o valor total baseado nas raspadinhas vendidas
+      let totalPrizeValue = 0;
+      
+      for (const card of soldCards) {
+        const prize = allPrizes.find(p => p.id === card.prize_id);
+        if (prize) {
+          totalPrizeValue += Number(prize.prize_value || 0);
+        }
+      }
+
       const totalPlatformCommission = totalPrizeValue * 0.1; // 10%
       const totalCompanyProfit = totalPrizeValue * 0.9; // 90%
 
@@ -49,15 +67,36 @@ export const ReportsTab = () => {
 
       if (companiesError) throw companiesError;
 
-      // Criar relatório por empresa (atualmente todas compartilham os mesmos prêmios)
-      const companiesReport: CompanyReport[] = companies.map(company => ({
-        id: company.id,
-        name: company.name,
-        totalPrizeValue: totalPrizeValue,
-        companyProfit: totalCompanyProfit,
-        platformCommission: totalPlatformCommission,
-        prizesCount: allPrizes.length,
-      }));
+      // Criar relatório por empresa
+      const companiesReport: CompanyReport[] = await Promise.all(
+        companies.map(async (company) => {
+          // Buscar raspadinhas vendidas desta empresa
+          const { data: companyCards } = await sb
+            .from("scratch_cards")
+            .select("prize_id, status")
+            .eq("company_id", company.id)
+            .in("status", ["registered", "redeemed"]);
+
+          const soldCompanyCards = companyCards || [];
+          
+          let companyTotalValue = 0;
+          for (const card of soldCompanyCards) {
+            const prize = allPrizes.find(p => p.id === card.prize_id);
+            if (prize) {
+              companyTotalValue += Number(prize.prize_value || 0);
+            }
+          }
+
+          return {
+            id: company.id,
+            name: company.name,
+            totalPrizeValue: companyTotalValue,
+            companyProfit: companyTotalValue * 0.9,
+            platformCommission: companyTotalValue * 0.1,
+            prizesCount: soldCompanyCards.length,
+          };
+        })
+      );
 
       setStats({
         totalCompanyProfit,
@@ -104,7 +143,7 @@ export const ReportsTab = () => {
               Lucro das Empresas
             </CardTitle>
             <CardDescription>
-              90% do valor total dos prêmios cadastrados
+              90% do valor dos prêmios vendidos/resgatados
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -113,7 +152,7 @@ export const ReportsTab = () => {
                 R$ {formatCurrency(stats.totalCompanyProfit)}
               </div>
               <p className="text-sm text-muted-foreground">
-                Com base em {stats.totalPrizeValue > 0 ? `R$ ${formatCurrency(stats.totalPrizeValue)}` : 'R$ 0,00'} em prêmios
+                Com base em {stats.totalPrizeValue > 0 ? `R$ ${formatCurrency(stats.totalPrizeValue)}` : 'R$ 0,00'} em vendas
               </p>
             </div>
           </CardContent>
@@ -127,7 +166,7 @@ export const ReportsTab = () => {
               Comissão da Plataforma
             </CardTitle>
             <CardDescription>
-              10% do valor total dos prêmios cadastrados
+              10% do valor dos prêmios vendidos/resgatados
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -136,7 +175,7 @@ export const ReportsTab = () => {
                 R$ {formatCurrency(stats.totalPlatformCommission)}
               </div>
               <p className="text-sm text-muted-foreground">
-                Com base em {stats.totalPrizeValue > 0 ? `R$ ${formatCurrency(stats.totalPrizeValue)}` : 'R$ 0,00'} em prêmios
+                Com base em {stats.totalPrizeValue > 0 ? `R$ ${formatCurrency(stats.totalPrizeValue)}` : 'R$ 0,00'} em vendas
               </p>
             </div>
           </CardContent>
@@ -165,7 +204,7 @@ export const ReportsTab = () => {
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-lg">{company.name}</h3>
                     <div className="text-sm text-muted-foreground">
-                      {company.prizesCount} prêmio{company.prizesCount !== 1 ? 's' : ''} cadastrado{company.prizesCount !== 1 ? 's' : ''}
+                      {company.prizesCount} raspadinha{company.prizesCount !== 1 ? 's' : ''} vendida{company.prizesCount !== 1 ? 's' : ''}
                     </div>
                   </div>
 
