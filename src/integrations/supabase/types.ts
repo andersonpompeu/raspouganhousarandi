@@ -14,7 +14,261 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          commission_percentage: number
+          contact_email: string | null
+          contact_phone: string
+          created_at: string
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          commission_percentage?: number
+          contact_email?: string | null
+          contact_phone: string
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          commission_percentage?: number
+          contact_email?: string | null
+          contact_phone?: string
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          scratch_card_id: string | null
+          transaction_type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          scratch_card_id?: string | null
+          transaction_type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          scratch_card_id?: string | null
+          transaction_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_scratch_card_id_fkey"
+            columns: ["scratch_card_id"]
+            isOneToOne: false
+            referencedRelation: "scratch_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prizes: {
+        Row: {
+          cost_to_company: number
+          created_at: string
+          description: string | null
+          distributed_quantity: number
+          id: string
+          name: string
+          platform_commission_percentage: number | null
+          prize_value: number
+          total_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          cost_to_company?: number
+          created_at?: string
+          description?: string | null
+          distributed_quantity?: number
+          id?: string
+          name: string
+          platform_commission_percentage?: number | null
+          prize_value?: number
+          total_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_to_company?: number
+          created_at?: string
+          description?: string | null
+          distributed_quantity?: number
+          id?: string
+          name?: string
+          platform_commission_percentage?: number | null
+          prize_value?: number
+          total_quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      redemptions: {
+        Row: {
+          attendant_name: string
+          id: string
+          notes: string | null
+          redeemed_at: string
+          scratch_card_id: string
+        }
+        Insert: {
+          attendant_name: string
+          id?: string
+          notes?: string | null
+          redeemed_at?: string
+          scratch_card_id: string
+        }
+        Update: {
+          attendant_name?: string
+          id?: string
+          notes?: string | null
+          redeemed_at?: string
+          scratch_card_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "redemptions_scratch_card_id_fkey"
+            columns: ["scratch_card_id"]
+            isOneToOne: false
+            referencedRelation: "scratch_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registrations: {
+        Row: {
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          registered_at: string
+          scratch_card_id: string
+        }
+        Insert: {
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          id?: string
+          registered_at?: string
+          scratch_card_id: string
+        }
+        Update: {
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          registered_at?: string
+          scratch_card_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registrations_scratch_card_id_fkey"
+            columns: ["scratch_card_id"]
+            isOneToOne: false
+            referencedRelation: "scratch_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scratch_cards: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          prize_id: string | null
+          production_cost: number
+          sale_price: number
+          serial_code: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          prize_id?: string | null
+          production_cost?: number
+          sale_price?: number
+          serial_code: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          prize_id?: string | null
+          production_cost?: number
+          sale_price?: number
+          serial_code?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scratch_cards_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scratch_cards_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: false
+            referencedRelation: "prizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
