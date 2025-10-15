@@ -51,25 +51,20 @@ export const CreateUserDialog = ({ open, onOpenChange, onSuccess }: CreateUserDi
     setLoading(true);
 
     try {
-      // Criar usuário usando admin API
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: email.trim(),
-        password: password,
-        email_confirm: true,
+      // Chamar edge function para criar usuário
+      const { data, error } = await supabase.functions.invoke('create-company-user', {
+        body: {
+          email: email.trim(),
+          password: password,
+          companyId: companyId,
+        },
       });
 
-      if (authError) throw authError;
+      if (error) throw error;
 
-      // Inserir role de company_partner
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: 'company_partner',
-          company_id: companyId,
-        });
-
-      if (roleError) throw roleError;
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
       toast({
         title: "Usuário criado!",
@@ -82,9 +77,10 @@ export const CreateUserDialog = ({ open, onOpenChange, onSuccess }: CreateUserDi
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
+      console.error('Error creating user:', error);
       toast({
         title: "Erro ao criar usuário",
-        description: error.message,
+        description: error.message || "Erro desconhecido",
         variant: "destructive",
       });
     } finally {
