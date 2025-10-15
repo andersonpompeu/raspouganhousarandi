@@ -245,7 +245,7 @@ const Register = () => {
               </p>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full bg-gradient-primary hover:opacity-90 text-3xl">
+            <Button type="submit" disabled={loading} className="w-full bg-gradient-primary hover:opacity-90 text-xl font-bold">
               <Sparkles className="w-4 h-4 mr-2" />
               {loading ? "Verificando..." : "Verificar Código"}
             </Button>
