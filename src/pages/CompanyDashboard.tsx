@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
@@ -205,6 +205,17 @@ export default function CompanyDashboard() {
     }
   };
 
+  // Redirecionar se não for company_partner
+  useEffect(() => {
+    if (!authLoading && !roleLoading) {
+      if (!user) {
+        navigate('/auth');
+      } else if (role && role !== 'company_partner') {
+        navigate('/dashboard');
+      }
+    }
+  }, [user, role, authLoading, roleLoading, navigate]);
+
   if (authLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -214,7 +225,6 @@ export default function CompanyDashboard() {
   }
 
   if (!user || role !== 'company_partner') {
-    navigate('/auth');
     return null;
   }
 
