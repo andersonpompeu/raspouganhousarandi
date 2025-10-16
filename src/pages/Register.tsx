@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +21,11 @@ type ScratchCard = {
   } | null;
 };
 const Register = () => {
+  const [searchParams] = useSearchParams();
+  const codeFromUrl = searchParams.get("code");
+  
   const [formData, setFormData] = useState({
-    codigo: "",
+    codigo: codeFromUrl || "",
     name: "",
     whatsapp: "",
     email: ""
@@ -31,10 +35,20 @@ const Register = () => {
   const [isValidated, setIsValidated] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState<"code" | "form">("code");
-  const handleVerifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+
+  // Auto-verificar código se vier da URL
+  useEffect(() => {
+    if (codeFromUrl && !scratchCard && !error) {
+      handleVerifyCode(null, codeFromUrl);
+    }
+  }, [codeFromUrl]);
+  const handleVerifyCode = async (e: React.FormEvent | null, codeOverride?: string) => {
+    if (e) e.preventDefault();
     setLoading(true);
     setError("");
+    
+    const codeToVerify = codeOverride || formData.codigo.trim();
+    
     try {
       const {
         data,
@@ -43,7 +57,7 @@ const Register = () => {
           *,
           prizes(name, description),
           companies(name)
-        `).eq("serial_code", formData.codigo.trim()).maybeSingle();
+        `).eq("serial_code", codeToVerify).maybeSingle();
       if (error) throw error;
       if (!data) {
         setError("Código de raspadinha não encontrado. Verifique e tente novamente.");

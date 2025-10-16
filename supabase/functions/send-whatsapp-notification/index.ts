@@ -104,11 +104,13 @@ Obrigado por participar! 🎁`;
     }
 
     console.log('✅ Mensagem WhatsApp enviada com sucesso!');
+    console.log(`📊 Status da Evolution API: ${evolutionResponse.status}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'WhatsApp notification sent successfully',
+        message: 'WhatsApp enviado com sucesso',
+        status: evolutionResponse.status,
         phone: formattedPhone
       }),
       { 
@@ -118,10 +120,12 @@ Obrigado por participar! 🎁`;
     );
 
   } catch (error: any) {
-    console.error('💥 Erro ao enviar notificação WhatsApp:', error);
+    console.error('💥 Erro crítico ao enviar notificação WhatsApp:', error);
+    console.error('📋 Detalhes do erro:', JSON.stringify(error, null, 2));
     
     return new Response(
       JSON.stringify({ 
+        success: false,
         error: error.message || 'Failed to send WhatsApp notification',
         details: error.toString()
       }),

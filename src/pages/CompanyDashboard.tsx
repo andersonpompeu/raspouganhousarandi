@@ -187,9 +187,10 @@ export default function CompanyDashboard() {
       if (updateError) throw updateError;
 
       // Send WhatsApp notification (non-blocking)
+      let whatsappSuccess = false;
       try {
         console.log('📱 Enviando notificação WhatsApp para o cliente...');
-        const { error: whatsappError } = await supabase.functions.invoke(
+        const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke(
           'send-whatsapp-notification',
           {
             body: {
@@ -203,13 +204,39 @@ export default function CompanyDashboard() {
 
         if (whatsappError) {
           console.error('❌ Erro ao enviar WhatsApp:', whatsappError);
-          // Don't block the main flow - just log the error
+          toast({
+            title: "⚠️ Entrega confirmada!",
+            description: "Porém, não foi possível enviar o WhatsApp ao cliente.",
+            variant: "default",
+          });
+        } else if (whatsappData?.success) {
+          console.log('✅ WhatsApp enviado com sucesso!');
+          whatsappSuccess = true;
+          toast({
+            title: "✓ Entrega confirmada!",
+            description: "Cliente notificado via WhatsApp com sucesso.",
+          });
         } else {
-          console.log('✅ Notificação WhatsApp enviada com sucesso!');
+          console.warn('⚠️ WhatsApp retornou sem sucesso:', whatsappData);
+          toast({
+            title: "⚠️ Entrega confirmada!",
+            description: "Porém, falha ao enviar WhatsApp ao cliente.",
+            variant: "default",
+          });
         }
       } catch (whatsappError) {
-        console.error('💥 Falha ao enviar notificação WhatsApp:', whatsappError);
-        // Continue normally even if WhatsApp fails
+        console.error('❌ Falha crítica ao enviar WhatsApp:', whatsappError);
+        toast({
+          title: "⚠️ Entrega confirmada!",
+          description: "Porém, não foi possível enviar o WhatsApp.",
+          variant: "default",
+        });
+      }
+
+      // Se não mostrou toast ainda (caso improvável), mostra genérico
+      if (!whatsappSuccess) {
+        // Apenas loga, pois já mostrou toast acima
+        console.log('ℹ️ Processo de entrega finalizado');
       }
 
       setRedemptionSuccess(true);
@@ -217,11 +244,6 @@ export default function CompanyDashboard() {
       setAttendantName("");
       setNotes("");
       setScratchCard(null);
-
-      toast({
-        title: "✓ Entrega confirmada!",
-        description: "Prêmio entregue com sucesso. Cliente notificado via WhatsApp.",
-      });
     } catch (error: any) {
       toast({
         title: "Erro ao confirmar",

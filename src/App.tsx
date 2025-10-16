@@ -6,11 +6,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
-import Validate from "./pages/Validate";
 import Register from "./pages/Register";
 import RedeemPrize from "./pages/RedeemPrize";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import NotFound from "./pages/NotFound";
+import ValidateRedirect from "./components/ValidateRedirect";
 
 const queryClient = new QueryClient();
 
@@ -25,7 +25,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/company" element={<CompanyDashboard />} />
-          <Route path="/validate/:serial" element={<Validate />} />
+          <Route path="/validate/:serial" element={<ValidateRedirect />} />
           <Route path="/cadastro" element={<Register />} />
           <Route path="/validar-entrega" element={<RedeemPrize />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
