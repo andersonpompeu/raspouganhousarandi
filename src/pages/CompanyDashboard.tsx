@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Package, CheckCircle, LogOut, BarChart3, MessageCircle } from "lucide-react";
+import { Loader2, Package, CheckCircle, LogOut, BarChart3, MessageCircle, Check, X, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -24,6 +24,8 @@ export default function CompanyDashboard() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [scratchCard, setScratchCard] = useState<any>(null);
   const [redemptionSuccess, setRedemptionSuccess] = useState(false);
+  const [whatsappSending, setWhatsappSending] = useState(false);
+  const [whatsappStatus, setWhatsappStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
 
   // Buscar estatísticas
   const { data: stats } = useQuery({
@@ -168,6 +170,8 @@ export default function CompanyDashboard() {
       return;
     }
 
+    setWhatsappStatus('idle');
+
     try {
       const { error: redemptionError } = await supabase
         .from('redemptions')
@@ -186,8 +190,16 @@ export default function CompanyDashboard() {
 
       if (updateError) throw updateError;
 
-      // Send WhatsApp notification (non-blocking)
-      let whatsappSuccess = false;
+      // Toast de sucesso da entrega
+      toast({
+        title: "✅ Entrega confirmada!",
+        description: "Prêmio entregue com sucesso.",
+      });
+
+      // Send WhatsApp notification (non-blocking with visual feedback)
+      setWhatsappSending(true);
+      setWhatsappStatus('sending');
+
       try {
         console.log('📱 Enviando notificação WhatsApp para o cliente...');
         const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke(
@@ -204,46 +216,50 @@ export default function CompanyDashboard() {
 
         if (whatsappError) {
           console.error('❌ Erro ao enviar WhatsApp:', whatsappError);
+          setWhatsappStatus('error');
           toast({
-            title: "⚠️ Entrega confirmada!",
-            description: "Porém, não foi possível enviar o WhatsApp ao cliente.",
-            variant: "default",
+            title: "❌ Falha no WhatsApp",
+            description: "Não foi possível enviar a notificação ao cliente.",
+            variant: "destructive",
           });
         } else if (whatsappData?.success) {
           console.log('✅ WhatsApp enviado com sucesso!');
-          whatsappSuccess = true;
+          setWhatsappStatus('success');
           toast({
-            title: "✓ Entrega confirmada!",
-            description: "Cliente notificado via WhatsApp com sucesso.",
+            title: "✅ WhatsApp enviado!",
+            description: `Cliente ${scratchCard.registrations[0].customer_name} notificado com sucesso.`,
           });
         } else {
           console.warn('⚠️ WhatsApp retornou sem sucesso:', whatsappData);
+          setWhatsappStatus('error');
           toast({
-            title: "⚠️ Entrega confirmada!",
-            description: "Porém, falha ao enviar WhatsApp ao cliente.",
-            variant: "default",
+            title: "⚠️ Falha no WhatsApp",
+            description: "Resposta inesperada ao enviar notificação.",
+            variant: "destructive",
           });
         }
       } catch (whatsappError) {
         console.error('❌ Falha crítica ao enviar WhatsApp:', whatsappError);
+        setWhatsappStatus('error');
         toast({
-          title: "⚠️ Entrega confirmada!",
-          description: "Porém, não foi possível enviar o WhatsApp.",
-          variant: "default",
+          title: "❌ Erro no WhatsApp",
+          description: "Não foi possível enviar a notificação.",
+          variant: "destructive",
         });
-      }
-
-      // Se não mostrou toast ainda (caso improvável), mostra genérico
-      if (!whatsappSuccess) {
-        // Apenas loga, pois já mostrou toast acima
-        console.log('ℹ️ Processo de entrega finalizado');
+      } finally {
+        setWhatsappSending(false);
       }
 
       setRedemptionSuccess(true);
-      setSerialCode("");
-      setAttendantName("");
-      setNotes("");
-      setScratchCard(null);
+      
+      // Limpar formulário após 3 segundos
+      setTimeout(() => {
+        setSerialCode("");
+        setAttendantName("");
+        setNotes("");
+        setScratchCard(null);
+        setWhatsappStatus('idle');
+      }, 3000);
     } catch (error: any) {
       toast({
         title: "Erro ao confirmar",
@@ -366,15 +382,71 @@ export default function CompanyDashboard() {
                 <Button 
                   onClick={handleRedeem} 
                   className="w-full h-12 text-lg"
+                  disabled={whatsappSending}
                 >
-                  <CheckCircle className="w-5 h-5 mr-2" />
+                  {whatsappSending ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                  )}
                   Confirmar Entrega
                 </Button>
               </div>
+
+              {/* Status do WhatsApp */}
+              {whatsappStatus !== 'idle' && (
+                <div className={`mt-4 p-3 rounded-lg flex items-center gap-3 ${
+                  whatsappStatus === 'sending' ? 'bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800' :
+                  whatsappStatus === 'success' ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800' :
+                  'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800'
+                }`}>
+                  {whatsappStatus === 'sending' && (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400" />
+                      <div className="flex-1">
+                        <p className="font-medium text-blue-900 dark:text-blue-100">Enviando WhatsApp...</p>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">Aguarde, notificando cliente</p>
+                      </div>
+                    </>
+                  )}
+                  {whatsappStatus === 'success' && (
+                    <>
+                      <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      <div className="flex-1">
+                        <p className="font-medium text-green-900 dark:text-green-100">WhatsApp enviado!</p>
+                        <p className="text-sm text-green-700 dark:text-green-300">Cliente notificado com sucesso</p>
+                      </div>
+                    </>
+                  )}
+                  {whatsappStatus === 'error' && (
+                    <>
+                      <X className="w-5 h-5 text-red-600 dark:text-red-400" />
+                      <div className="flex-1">
+                        <p className="font-medium text-red-900 dark:text-red-100">Falha no WhatsApp</p>
+                        <p className="text-sm text-red-700 dark:text-red-300">Não foi possível enviar notificação</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
 
+        {/* Card de sucesso após entrega */}
+        {redemptionSuccess && (
+          <Card className="border-green-500 bg-green-50 dark:bg-green-950">
+            <CardContent className="pt-6">
+              <div className="text-center space-y-2">
+                <CheckCircle className="w-12 h-12 mx-auto text-green-600 dark:text-green-400" />
+                <h3 className="text-lg font-bold text-green-900 dark:text-green-100">Entrega Confirmada!</h3>
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  O prêmio foi registrado com sucesso
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {/* Estatísticas */}
         <Card>
           <CardHeader>
