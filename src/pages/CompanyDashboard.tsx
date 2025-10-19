@@ -18,7 +18,7 @@ export default function CompanyDashboard() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [serialCode, setSerialCode] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [attendantName, setAttendantName] = useState("");
   const [notes, setNotes] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
@@ -26,6 +26,19 @@ export default function CompanyDashboard() {
   const [redemptionSuccess, setRedemptionSuccess] = useState(false);
   const [whatsappSending, setWhatsappSending] = useState(false);
   const [whatsappStatus, setWhatsappStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+
+  // Pre-fill attendant name with user's name
+  useEffect(() => {
+    const loadUserName = async () => {
+      if (user) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser?.user_metadata?.full_name) {
+          setAttendantName(authUser.user_metadata.full_name);
+        }
+      }
+    };
+    loadUserName();
+  }, [user]);
 
   // Buscar estatísticas
   const { data: stats } = useQuery({
@@ -93,10 +106,10 @@ export default function CompanyDashboard() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!serialCode.trim()) {
+    if (!searchQuery.trim()) {
       toast({
-        title: "Código obrigatório",
-        description: "Digite o código da raspadinha",
+        title: "Campo obrigatório",
+        description: "Digite código, telefone ou nome do cliente",
         variant: "destructive",
       });
       return;
@@ -107,7 +120,10 @@ export default function CompanyDashboard() {
     setRedemptionSuccess(false);
 
     try {
-      const { data, error } = await supabase
+      const query = searchQuery.trim().toUpperCase();
+      
+      // First try to search by serial code
+      let { data, error } = await supabase
         .from('scratch_cards')
         .select(`
           *,
@@ -115,16 +131,43 @@ export default function CompanyDashboard() {
           companies(*),
           registrations(*)
         `)
-        .eq('serial_code', serialCode.trim().toUpperCase())
+        .eq('serial_code', query)
         .eq('company_id', companyId!)
         .maybeSingle();
+
+      // If not found by serial code, try searching by customer phone or name
+      if (!data && !error) {
+        const { data: registrations, error: regError } = await supabase
+          .from('registrations')
+          .select(`
+            *,
+            scratch_cards!inner(
+              *,
+              prizes(*),
+              companies(*)
+            )
+          `)
+          .eq('scratch_cards.company_id', companyId!)
+          .or(`customer_phone.ilike.%${query}%,customer_name.ilike.%${query}%`);
+
+        if (regError) throw regError;
+
+        if (registrations && registrations.length > 0) {
+          // Get the first match and restructure to match expected format
+          const reg = registrations[0];
+          data = {
+            ...reg.scratch_cards,
+            registrations: [reg]
+          };
+        }
+      }
 
       if (error) throw error;
 
       if (!data) {
         toast({
-          title: "Código não encontrado",
-          description: "Verifique o código ou esta raspadinha não pertence à sua empresa",
+          title: "Não encontrado",
+          description: "Verifique o código, telefone ou nome do cliente",
           variant: "destructive",
         });
         return;
@@ -161,15 +204,6 @@ export default function CompanyDashboard() {
   };
 
   const handleRedeem = async () => {
-    if (!attendantName.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Digite o nome do atendente",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setWhatsappStatus('idle');
 
     try {
@@ -177,7 +211,7 @@ export default function CompanyDashboard() {
         .from('redemptions')
         .insert({
           scratch_card_id: scratchCard.id,
-          attendant_name: attendantName.trim(),
+          attendant_name: attendantName.trim() || 'Atendente',
           notes: notes.trim() || null,
         });
 
@@ -254,8 +288,7 @@ export default function CompanyDashboard() {
       
       // Limpar formulário após 3 segundos
       setTimeout(() => {
-        setSerialCode("");
-        setAttendantName("");
+        setSearchQuery("");
         setNotes("");
         setScratchCard(null);
         setWhatsappStatus('idle');
@@ -316,15 +349,18 @@ export default function CompanyDashboard() {
           <CardContent>
             <form onSubmit={handleSearch} className="space-y-4">
               <div>
-                <Label htmlFor="serial">Código da Raspadinha</Label>
+                <Label htmlFor="search">Buscar por código, telefone ou nome</Label>
                 <Input
-                  id="serial"
-                  value={serialCode}
-                  onChange={(e) => setSerialCode(e.target.value.toUpperCase())}
-                  placeholder="Digite o código"
+                  id="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
+                  placeholder="Digite código, telefone ou nome do cliente"
                   className="text-lg h-12"
                   autoComplete="off"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ex: RSP-0001, (11) 98765-4321, ou João Silva
+                </p>
               </div>
               <Button 
                 type="submit" 
@@ -360,7 +396,7 @@ export default function CompanyDashboard() {
 
               <div className="space-y-3 pt-4 border-t">
                 <div>
-                  <Label htmlFor="attendant">Atendente *</Label>
+                  <Label htmlFor="attendant">Atendente (opcional)</Label>
                   <Input
                     id="attendant"
                     value={attendantName}
@@ -370,7 +406,7 @@ export default function CompanyDashboard() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="notes">Observações</Label>
+                  <Label htmlFor="notes">Observações (opcional)</Label>
                   <Textarea
                     id="notes"
                     value={notes}
@@ -381,15 +417,15 @@ export default function CompanyDashboard() {
                 </div>
                 <Button 
                   onClick={handleRedeem} 
-                  className="w-full h-12 text-lg"
+                  className="w-full h-16 text-xl font-bold bg-gradient-primary hover:opacity-90"
                   disabled={whatsappSending}
                 >
                   {whatsappSending ? (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    <Loader2 className="w-6 h-6 mr-2 animate-spin" />
                   ) : (
-                    <CheckCircle className="w-5 h-5 mr-2" />
+                    <CheckCircle className="w-6 h-6 mr-2" />
                   )}
-                  Confirmar Entrega
+                  ✅ ENTREGAR AGORA
                 </Button>
               </div>
 

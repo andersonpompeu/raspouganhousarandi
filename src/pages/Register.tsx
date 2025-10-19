@@ -100,6 +100,33 @@ const Register = () => {
         status: "registered"
       }).eq("id", scratchCard.id);
       if (updateError) throw updateError;
+      
+      // Enviar WhatsApp imediato após cadastro
+      try {
+        console.log('📱 Enviando notificação WhatsApp de cadastro...');
+        const { data: whatsappData, error: whatsappError } = await sb.functions.invoke(
+          'send-whatsapp-notification',
+          {
+            body: {
+              customerName: formData.name,
+              customerPhone: formData.whatsapp,
+              prizeName: scratchCard.prizes?.name || 'Prêmio',
+              serialCode: scratchCard.serial_code,
+              companyName: scratchCard.companies?.name || 'Loja parceira',
+            }
+          }
+        );
+
+        if (whatsappError) {
+          console.error('⚠️ Erro ao enviar WhatsApp:', whatsappError);
+        } else if (whatsappData?.success) {
+          console.log('✅ WhatsApp de cadastro enviado!');
+        }
+      } catch (whatsappError) {
+        console.error('⚠️ Falha ao enviar WhatsApp de cadastro:', whatsappError);
+        // Não bloquear o cadastro se WhatsApp falhar
+      }
+      
       setIsValidated(true);
       toast.success("Cadastro realizado com sucesso!");
     } catch (error: any) {
