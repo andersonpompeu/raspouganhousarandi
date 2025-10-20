@@ -55,8 +55,8 @@ const Register = () => {
         error
       } = await sb.from("scratch_cards").select(`
           *,
-          prizes(name, description),
-          companies(name)
+          prizes!prize_id(name, description),
+          companies!company_id(name)
         `).eq("serial_code", codeToVerify).maybeSingle();
       if (error) throw error;
       if (!data) {
