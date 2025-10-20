@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Package, CheckCircle, LogOut, BarChart3, MessageCircle, Check, X, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function CompanyDashboard() {
   const { user, signOut, loading: authLoading } = useAuth();
@@ -26,8 +28,10 @@ export default function CompanyDashboard() {
   const [redemptionSuccess, setRedemptionSuccess] = useState(false);
   const [whatsappSending, setWhatsappSending] = useState(false);
   const [whatsappStatus, setWhatsappStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
 
-  // Pre-fill attendant name with user's name
+  // Pre-fill attendant name with user's name and load recent searches
   useEffect(() => {
     const loadUserName = async () => {
       if (user) {
@@ -38,7 +42,19 @@ export default function CompanyDashboard() {
       }
     };
     loadUserName();
+
+    // Load recent searches from localStorage
+    const saved = localStorage.getItem("recentSearches");
+    if (saved) {
+      setRecentSearches(JSON.parse(saved));
+    }
   }, [user]);
+
+  const saveRecentSearch = (query: string) => {
+    const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5);
+    setRecentSearches(updated);
+    localStorage.setItem("recentSearches", JSON.stringify(updated));
+  };
 
   // Buscar estatísticas
   const { data: stats } = useQuery({
@@ -104,9 +120,10 @@ export default function CompanyDashboard() {
     enabled: !!companyId,
   });
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) {
+  const handleSearch = async (e?: React.FormEvent, query?: string) => {
+    if (e) e.preventDefault();
+    const searchTerm = query || searchQuery;
+    if (!searchTerm.trim()) {
       toast({
         title: "Campo obrigatório",
         description: "Digite código, telefone ou nome do cliente",
@@ -118,9 +135,11 @@ export default function CompanyDashboard() {
     setSearchLoading(true);
     setScratchCard(null);
     setRedemptionSuccess(false);
+    setShowAutocomplete(false);
+    saveRecentSearch(searchTerm);
 
     try {
-      const query = searchQuery.trim().toUpperCase();
+      const queryText = searchTerm.trim().toUpperCase();
       
       // First try to search by serial code
       let { data, error } = await supabase
@@ -131,7 +150,7 @@ export default function CompanyDashboard() {
           companies(*),
           registrations(*)
         `)
-        .eq('serial_code', query)
+        .eq('serial_code', queryText)
         .eq('company_id', companyId!)
         .maybeSingle();
 
@@ -148,7 +167,7 @@ export default function CompanyDashboard() {
             )
           `)
           .eq('scratch_cards.company_id', companyId!)
-          .or(`customer_phone.ilike.%${query}%,customer_name.ilike.%${query}%`);
+          .or(`customer_phone.ilike.%${queryText}%,customer_name.ilike.%${queryText}%`);
 
         if (regError) throw regError;
 
@@ -350,14 +369,55 @@ export default function CompanyDashboard() {
             <form onSubmit={handleSearch} className="space-y-4">
               <div>
                 <Label htmlFor="search">Buscar por código, telefone ou nome</Label>
-                <Input
-                  id="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
-                  placeholder="Digite código, telefone ou nome do cliente"
-                  className="text-lg h-12"
-                  autoComplete="off"
-                />
+                <div className="relative">
+                  <Popover open={showAutocomplete} onOpenChange={setShowAutocomplete}>
+                    <PopoverTrigger asChild>
+                      <div>
+                        <Input
+                          id="search"
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value.toUpperCase());
+                            setShowAutocomplete(e.target.value.length > 0 && recentSearches.length > 0);
+                          }}
+                          onFocus={() => {
+                            if (searchQuery.length > 0 && recentSearches.length > 0) {
+                              setShowAutocomplete(true);
+                            }
+                          }}
+                          placeholder="Digite código, telefone ou nome do cliente"
+                          className="text-lg h-12"
+                          autoComplete="off"
+                        />
+                      </div>
+                    </PopoverTrigger>
+                    {recentSearches.length > 0 && (
+                      <PopoverContent className="w-[calc(100vw-2rem)] max-w-[500px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar em pesquisas recentes..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma pesquisa recente.</CommandEmpty>
+                            <CommandGroup heading="Pesquisas Recentes">
+                              {recentSearches.map((search, index) => (
+                                <CommandItem
+                                  key={index}
+                                  onSelect={() => {
+                                    setSearchQuery(search);
+                                    handleSearch(undefined, search);
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                                  {search}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    )}
+                  </Popover>
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Ex: RSP-0001, (11) 98765-4321, ou João Silva
                 </p>
