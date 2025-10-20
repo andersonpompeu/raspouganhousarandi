@@ -23,7 +23,7 @@ export const GenerateBatchDialog = ({ open, onOpenChange, onSuccess }: GenerateB
     startNumber: "1",
     quantity: "100",
     companyId: "none",
-    prizeId: "none",
+    prizeId: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -54,11 +54,18 @@ export const GenerateBatchDialog = ({ open, onOpenChange, onSuccess }: GenerateB
       const startNum = parseInt(formData.startNumber);
       const cards = [];
 
+      // Validar se prêmio foi selecionado
+      if (!formData.prizeId) {
+        toast.error("Selecione um prêmio para as raspadinhas");
+        setLoading(false);
+        return;
+      }
+
       for (let i = 0; i < quantity; i++) {
         cards.push({
           serial_code: generateSerialCode(startNum + i),
           company_id: formData.companyId === "none" ? null : formData.companyId,
-          prize_id: formData.prizeId === "none" ? null : formData.prizeId,
+          prize_id: formData.prizeId,
           status: "available",
         });
       }
@@ -152,20 +159,30 @@ export const GenerateBatchDialog = ({ open, onOpenChange, onSuccess }: GenerateB
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="prize">Prêmio (opcional)</Label>
-            <Select value={formData.prizeId} onValueChange={(value) => setFormData({ ...formData, prizeId: value })}>
+            <Label htmlFor="prize">Prêmio *</Label>
+            <Select value={formData.prizeId} onValueChange={(value) => setFormData({ ...formData, prizeId: value })} required>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um prêmio" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Nenhum</SelectItem>
-                {prizes.map((prize) => (
-                  <SelectItem key={prize.id} value={prize.id}>
-                    {prize.name}
+                {prizes.length === 0 ? (
+                  <SelectItem value="no-prizes" disabled>
+                    Nenhum prêmio cadastrado
                   </SelectItem>
-                ))}
+                ) : (
+                  prizes.map((prize) => (
+                    <SelectItem key={prize.id} value={prize.id}>
+                      {prize.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
+            {prizes.length === 0 && (
+              <p className="text-xs text-destructive">
+                Cadastre pelo menos um prêmio antes de gerar raspadinhas
+              </p>
+            )}
           </div>
 
           <div className="flex gap-2 justify-end">
