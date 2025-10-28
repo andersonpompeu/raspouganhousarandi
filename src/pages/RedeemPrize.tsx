@@ -344,7 +344,7 @@ const RedeemPrize = () => {
                 )}
               </div>
 
-              {/* Customer Information */}
+              {/* Customer Information with Validation */}
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <p className="font-semibold mb-2">Dados do Cliente:</p>
                 <div className="space-y-1 text-sm">
@@ -371,6 +371,22 @@ const RedeemPrize = () => {
                     <span className="font-mono font-medium">
                       {scratchCard.serial_code}
                     </span>
+                  </p>
+                </div>
+                
+                {/* Identity Validation Alert */}
+                <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                  <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-500 mb-1">
+                    ⚠️ Validação de Identidade Obrigatória
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                    Confirme os últimos 4 dígitos do telefone do cliente: 
+                    <span className="font-mono font-bold ml-1">
+                      ****{scratchCard.registrations[0]?.customer_phone.slice(-4)}
+                    </span>
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                    Solicite um documento de identificação com foto antes de entregar o prêmio.
                   </p>
                 </div>
               </div>

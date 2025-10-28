@@ -13,6 +13,7 @@ import { RedemptionsTable } from "@/components/dashboard/RedemptionsTable";
 import { ReportsTab } from "@/components/dashboard/ReportsTab";
 import { CompanyUsersTable } from "@/components/dashboard/CompanyUsersTable";
 import { FinancialSettingsDialog } from "@/components/dashboard/FinancialSettingsDialog";
+import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
 import { useAuth } from "@/hooks/useAuth";
 
 const Dashboard = () => {
@@ -80,8 +81,9 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <StatsCards />
 
-        <Tabs defaultValue="companies" className="mt-8">
-          <TabsList className="grid w-full grid-cols-8 max-w-6xl">
+        <Tabs defaultValue="analytics" className="mt-8">
+          <TabsList className="grid w-full grid-cols-9 max-w-7xl">
+            <TabsTrigger value="analytics">📊 Analytics</TabsTrigger>
             <TabsTrigger value="companies">Empresas</TabsTrigger>
             <TabsTrigger value="scratch-cards">Raspadinhas</TabsTrigger>
             <TabsTrigger value="prizes">Prêmios</TabsTrigger>
@@ -94,6 +96,10 @@ const Dashboard = () => {
               Validar
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="analytics" className="mt-6">
+            <AnalyticsDashboard />
+          </TabsContent>
 
           <TabsContent value="companies" className="mt-6">
             <CompaniesTable />

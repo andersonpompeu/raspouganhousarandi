@@ -225,6 +225,7 @@ export type Database = {
           id: string
           prize_id: string | null
           production_cost: number
+          qr_code_url: string | null
           sale_price: number
           serial_code: string
           status: string
@@ -236,6 +237,7 @@ export type Database = {
           id?: string
           prize_id?: string | null
           production_cost?: number
+          qr_code_url?: string | null
           sale_price?: number
           serial_code: string
           status?: string
@@ -247,6 +249,7 @@ export type Database = {
           id?: string
           prize_id?: string | null
           production_cost?: number
+          qr_code_url?: string | null
           sale_price?: number
           serial_code?: string
           status?: string
@@ -306,10 +309,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_company: {
-        Args: { _user_id: string }
-        Returns: string
-      }
+      get_user_company: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import QRCode from "qrcode";
 
 const sb = supabase as any;
 
@@ -52,7 +53,6 @@ export const GenerateBatchDialog = ({ open, onOpenChange, onSuccess }: GenerateB
     try {
       const quantity = parseInt(formData.quantity);
       const startNum = parseInt(formData.startNumber);
-      const cards = [];
 
       // Validar se prêmio foi selecionado
       if (!formData.prizeId) {
@@ -61,20 +61,66 @@ export const GenerateBatchDialog = ({ open, onOpenChange, onSuccess }: GenerateB
         return;
       }
 
+      // Inserir scratch cards e gerar QR codes
       for (let i = 0; i < quantity; i++) {
-        cards.push({
-          serial_code: generateSerialCode(startNum + i),
-          company_id: formData.companyId === "none" ? null : formData.companyId,
-          prize_id: formData.prizeId,
-          status: "available",
+        const serialCode = generateSerialCode(startNum + i);
+        
+        // Insert scratch card
+        const { data: card, error: insertError } = await sb
+          .from("scratch_cards")
+          .insert({
+            serial_code: serialCode,
+            company_id: formData.companyId === "none" ? null : formData.companyId,
+            prize_id: formData.prizeId,
+            status: "available",
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        // Generate QR code
+        const registerUrl = `${window.location.origin}/cadastrar?code=${serialCode}`;
+        const qrCodeDataUrl = await QRCode.toDataURL(registerUrl, {
+          width: 512,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
         });
+
+        // Convert base64 to blob
+        const base64Response = await fetch(qrCodeDataUrl);
+        const blob = await base64Response.blob();
+
+        // Upload QR code to storage
+        const fileName = `${serialCode}.png`;
+        const { error: uploadError } = await sb.storage
+          .from('qr-codes')
+          .upload(fileName, blob, {
+            contentType: 'image/png',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error(`Failed to upload QR for ${serialCode}:`, uploadError);
+          continue;
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = sb.storage
+          .from('qr-codes')
+          .getPublicUrl(fileName);
+
+        // Update scratch card with QR code URL
+        await sb
+          .from("scratch_cards")
+          .update({ qr_code_url: publicUrl })
+          .eq("id", card.id);
       }
 
-      const { error } = await sb.from("scratch_cards").insert(cards);
-
-      if (error) throw error;
-
-      toast.success(`${quantity} raspadinhas geradas com sucesso!`);
+      toast.success(`${quantity} raspadinhas com QR codes geradas!`);
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
