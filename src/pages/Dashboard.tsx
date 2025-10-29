@@ -14,6 +14,7 @@ import { ReportsTab } from "@/components/dashboard/ReportsTab";
 import { CompanyUsersTable } from "@/components/dashboard/CompanyUsersTable";
 import { FinancialSettingsDialog } from "@/components/dashboard/FinancialSettingsDialog";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
+import { LoyaltyTable } from "@/components/dashboard/LoyaltyTable";
 import { useAuth } from "@/hooks/useAuth";
 
 const Dashboard = () => {
@@ -82,8 +83,9 @@ const Dashboard = () => {
         <StatsCards />
 
         <Tabs defaultValue="analytics" className="mt-8">
-          <TabsList className="grid w-full grid-cols-9 max-w-7xl">
+          <TabsList className="grid w-full grid-cols-10 max-w-7xl">
             <TabsTrigger value="analytics">📊 Analytics</TabsTrigger>
+            <TabsTrigger value="loyalty">🏆 Fidelidade</TabsTrigger>
             <TabsTrigger value="companies">Empresas</TabsTrigger>
             <TabsTrigger value="scratch-cards">Raspadinhas</TabsTrigger>
             <TabsTrigger value="prizes">Prêmios</TabsTrigger>
@@ -99,6 +101,10 @@ const Dashboard = () => {
 
           <TabsContent value="analytics" className="mt-6">
             <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="loyalty" className="mt-6">
+            <LoyaltyTable />
           </TabsContent>
 
           <TabsContent value="companies" className="mt-6">

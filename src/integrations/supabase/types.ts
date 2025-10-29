@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_loyalty: {
+        Row: {
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          last_redemption_at: string | null
+          points: number
+          tier: string
+          total_prizes_won: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          customer_phone: string
+          id?: string
+          last_redemption_at?: string | null
+          points?: number
+          tier?: string
+          total_prizes_won?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          last_redemption_at?: string | null
+          points?: number
+          tier?: string
+          total_prizes_won?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financial_transactions: {
         Row: {
           amount: number
@@ -190,6 +226,7 @@ export type Database = {
           customer_phone: string
           id: string
           registered_at: string
+          reminded_at: string | null
           scratch_card_id: string
         }
         Insert: {
@@ -198,6 +235,7 @@ export type Database = {
           customer_phone: string
           id?: string
           registered_at?: string
+          reminded_at?: string | null
           scratch_card_id: string
         }
         Update: {
@@ -206,6 +244,7 @@ export type Database = {
           customer_phone?: string
           id?: string
           registered_at?: string
+          reminded_at?: string | null
           scratch_card_id?: string
         }
         Relationships: [
