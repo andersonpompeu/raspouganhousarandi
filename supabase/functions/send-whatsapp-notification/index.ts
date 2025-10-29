@@ -67,9 +67,14 @@ Obrigado por participar! 🎁`;
     console.log('💬 Mensagem construída:', message);
 
     // Prepare request body for Evolution API
+    // Evolution API expects: { number: "5511999999999", text: "message" }
     const evolutionBody = {
       number: formattedPhone,
-      text: message
+      text: message,
+      options: {
+        delay: 1200,
+        presence: "composing"
+      }
     };
 
     console.log('🔄 Enviando para Evolution API:', EVOLUTION_API_URL);
