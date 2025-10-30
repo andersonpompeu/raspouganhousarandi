@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, PackageCheck, Settings } from "lucide-react";
+import { LogOut, PackageCheck, Settings, BarChart3, Award, Building2, Ticket, Gift, ClipboardList, TruckIcon, Users, FileText } from "lucide-react";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { CompaniesTable } from "@/components/dashboard/CompaniesTable";
 import { ScratchCardsTable } from "@/components/dashboard/ScratchCardsTable";
@@ -83,19 +83,85 @@ const Dashboard = () => {
         <StatsCards />
 
         <Tabs defaultValue="analytics" className="mt-8">
-          <TabsList className="grid w-full grid-cols-10 max-w-7xl">
-            <TabsTrigger value="analytics">📊 Analytics</TabsTrigger>
-            <TabsTrigger value="loyalty">🏆 Fidelidade</TabsTrigger>
-            <TabsTrigger value="companies">Empresas</TabsTrigger>
-            <TabsTrigger value="scratch-cards">Raspadinhas</TabsTrigger>
-            <TabsTrigger value="prizes">Prêmios</TabsTrigger>
-            <TabsTrigger value="registrations">Cadastros</TabsTrigger>
-            <TabsTrigger value="redemptions">Entregas</TabsTrigger>
-            <TabsTrigger value="users">Usuários</TabsTrigger>
-            <TabsTrigger value="reports">Relatórios</TabsTrigger>
-            <TabsTrigger value="redeem" className="bg-primary/10">
-              <PackageCheck className="w-4 h-4 mr-2" />
-              Validar
+          <TabsList className="w-full h-auto flex-wrap gap-2 bg-muted/30 p-4 rounded-xl">
+            {/* Visão Geral */}
+            <TabsTrigger 
+              value="analytics" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="text-sm font-medium">Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="loyalty" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Award className="w-5 h-5" />
+              <span className="text-sm font-medium">Fidelidade</span>
+            </TabsTrigger>
+            
+            {/* Gestão */}
+            <TabsTrigger 
+              value="companies" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Building2 className="w-5 h-5" />
+              <span className="text-sm font-medium">Empresas</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="users" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-sm font-medium">Usuários</span>
+            </TabsTrigger>
+            
+            {/* Produtos */}
+            <TabsTrigger 
+              value="scratch-cards" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Ticket className="w-5 h-5" />
+              <span className="text-sm font-medium">Raspadinhas</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="prizes" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Gift className="w-5 h-5" />
+              <span className="text-sm font-medium">Prêmios</span>
+            </TabsTrigger>
+            
+            {/* Operações */}
+            <TabsTrigger 
+              value="registrations" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <ClipboardList className="w-5 h-5" />
+              <span className="text-sm font-medium">Cadastros</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="redemptions" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <TruckIcon className="w-5 h-5" />
+              <span className="text-sm font-medium">Entregas</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="redeem" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground bg-primary/5 border-2 border-primary/20"
+            >
+              <PackageCheck className="w-5 h-5" />
+              <span className="text-sm font-medium">Validar</span>
+            </TabsTrigger>
+            
+            {/* Análise */}
+            <TabsTrigger 
+              value="reports" 
+              className="flex-1 min-w-[140px] h-20 flex flex-col items-center justify-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <FileText className="w-5 h-5" />
+              <span className="text-sm font-medium">Relatórios</span>
             </TabsTrigger>
           </TabsList>
 
