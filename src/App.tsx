@@ -7,7 +7,6 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import Register from "./pages/Register";
-import RedeemPrize from "./pages/RedeemPrize";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import NotFound from "./pages/NotFound";
 import ValidateRedirect from "./components/ValidateRedirect";
@@ -28,7 +27,7 @@ const App = () => (
           <Route path="/validate/:serial" element={<ValidateRedirect />} />
           <Route path="/cadastro" element={<Register />} />
           <Route path="/cadastrar" element={<Navigate to="/cadastro" replace />} />
-          <Route path="/validar-entrega" element={<RedeemPrize />} />
+          <Route path="/validar-entrega" element={<Navigate to="/company" replace />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
