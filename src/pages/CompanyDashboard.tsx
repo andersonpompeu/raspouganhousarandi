@@ -141,75 +141,60 @@ export default function CompanyDashboard() {
     saveRecentSearch(searchTerm);
 
     try {
-      const queryText = searchTerm.trim().toUpperCase();
+      const queryText = searchTerm.trim();
       
-      // First try to search by serial code
-      let { data, error } = await supabase
-        .from('scratch_cards')
+      // Buscar por código (parcial), telefone ou nome em uma única query
+      const { data: registrations, error } = await supabase
+        .from('registrations')
         .select(`
           *,
-          prizes(*),
-          companies(*),
-          registrations(*)
-        `)
-        .eq('serial_code', queryText)
-        .eq('company_id', companyId!)
-        .maybeSingle();
-
-      // If not found by serial code, try searching by customer phone or name
-      if (!data && !error) {
-        const { data: registrations, error: regError } = await supabase
-          .from('registrations')
-          .select(`
+          scratch_cards!inner(
             *,
-            scratch_cards!inner(
-              *,
-              prizes(*),
-              companies(*)
-            )
-          `)
-          .eq('scratch_cards.company_id', companyId!)
-          .or(`customer_phone.ilike.%${queryText}%,customer_name.ilike.%${queryText}%`);
-
-        if (regError) throw regError;
-
-        if (registrations && registrations.length > 0) {
-          // Get the first match and restructure to match expected format
-          const reg = registrations[0];
-          data = {
-            ...reg.scratch_cards,
-            registrations: [reg]
-          };
-        }
-      }
+            prizes(*),
+            companies(*)
+          )
+        `)
+        .eq('scratch_cards.company_id', companyId!)
+        .or(`scratch_cards.serial_code.ilike.%${queryText}%,customer_phone.ilike.%${queryText}%,customer_name.ilike.%${queryText}%`);
 
       if (error) throw error;
 
-      if (!data) {
+      if (!registrations || registrations.length === 0) {
         toast({
           title: "Não encontrado",
-          description: "Verifique o código, telefone ou nome do cliente",
+          description: "Nenhum cadastro encontrado com este código, telefone ou nome",
           variant: "destructive",
         });
         return;
       }
 
-      if (data.status === 'redeemed') {
+      // Filtrar apenas os que ainda não foram entregues (status 'registered')
+      const availableRegistrations = registrations.filter(
+        reg => reg.scratch_cards.status === 'registered'
+      );
+
+      if (availableRegistrations.length === 0) {
+        // Encontrou mas todos já foram entregues
         toast({
           title: "Já entregue",
-          description: "Este prêmio já foi entregue anteriormente",
+          description: `Encontrado ${registrations.length} resultado(s), mas todos já foram entregues`,
           variant: "destructive",
         });
         return;
       }
 
-      if (data.status !== 'registered') {
+      // Pegar o primeiro resultado disponível
+      const reg = availableRegistrations[0];
+      const data = {
+        ...reg.scratch_cards,
+        registrations: [reg]
+      };
+
+      if (availableRegistrations.length > 1) {
         toast({
-          title: "Código inválido",
-          description: "Esta raspadinha ainda não foi validada pelo cliente",
-          variant: "destructive",
+          title: "Múltiplos resultados",
+          description: `Encontrados ${availableRegistrations.length} resultados. Mostrando o primeiro.`,
         });
-        return;
       }
 
       setScratchCard(data);
