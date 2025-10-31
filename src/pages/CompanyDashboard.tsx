@@ -23,6 +23,8 @@ export default function CompanyDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [attendantName, setAttendantName] = useState("");
   const [notes, setNotes] = useState("");
+  const [documentType, setDocumentType] = useState("");
+  const [documentNumber, setDocumentNumber] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [scratchCard, setScratchCard] = useState<any>(null);
   const [redemptionSuccess, setRedemptionSuccess] = useState(false);
@@ -309,6 +311,8 @@ export default function CompanyDashboard() {
       setTimeout(() => {
         setSearchQuery("");
         setNotes("");
+        setDocumentType("");
+        setDocumentNumber("");
         setScratchCard(null);
         setWhatsappStatus('idle');
       }, 3000);
@@ -464,6 +468,32 @@ export default function CompanyDashboard() {
                     placeholder="Seu nome"
                     className="h-11"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="documentType">Tipo de Documento</Label>
+                    <select
+                      id="documentType"
+                      value={documentType}
+                      onChange={(e) => setDocumentType(e.target.value)}
+                      className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="cpf">CPF</option>
+                      <option value="rg">RG</option>
+                      <option value="cnh">CNH</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="documentNumber">Número do Documento</Label>
+                    <Input
+                      id="documentNumber"
+                      value={documentNumber}
+                      onChange={(e) => setDocumentNumber(e.target.value)}
+                      placeholder="Digite o número"
+                      className="h-11"
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="notes">Observações (opcional)</Label>
