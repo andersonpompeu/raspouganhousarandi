@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Gift, Sparkles, CheckCircle, AlertCircle, Share2, Printer } from "lucide-react";
+import { Gift, Sparkles, CheckCircle, AlertCircle, Share2, Printer, Camera, Keyboard } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import InputMask from "react-input-mask";
 import { z } from "zod";
+import { QRScanner } from "@/components/QRScanner";
 const sb = supabase as any;
 
 type ScratchCard = {
@@ -46,6 +47,7 @@ const Register = () => {
   const [isValidated, setIsValidated] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState<"code" | "form">("code");
+  const [showScanner, setShowScanner] = useState(false);
 
   // Auto-verificar código se vier da URL
   useEffect(() => {
@@ -409,8 +411,29 @@ const Register = () => {
               });
               setError("");
             }} className="font-mono text-lg" required />
+              <div className="flex gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowScanner(true)}
+                  className="flex-1"
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Escanear QR
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowScanner(false)}
+                  className="flex-1"
+                  disabled={!showScanner}
+                >
+                  <Keyboard className="mr-2 h-4 w-4" />
+                  Digitar Código
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Digite o código que está na sua raspadinha
+                Digite o código que está na sua raspadinha ou escaneie o QR Code
               </p>
             </div>
 
@@ -423,6 +446,17 @@ const Register = () => {
           
         </CardContent>
       </Card>
+
+      {showScanner && (
+        <QRScanner
+          onScanSuccess={(code) => {
+            setFormData({ ...formData, codigo: code.toUpperCase() });
+            setShowScanner(false);
+            toast.success("QR Code lido! Código preenchido automaticamente");
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>;
 };
 export default Register;

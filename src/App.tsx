@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import Register from "./pages/Register";
 import CompanyDashboard from "./pages/CompanyDashboard";
+import CustomerDashboard from "./pages/CustomerDashboard";
 import NotFound from "./pages/NotFound";
 import ValidateRedirect from "./components/ValidateRedirect";
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/cadastro" element={<Register />} />
           <Route path="/cadastrar" element={<Navigate to="/cadastro" replace />} />
           <Route path="/validar-entrega" element={<Navigate to="/company" replace />} />
+          <Route path="/meus-pontos" element={<CustomerDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

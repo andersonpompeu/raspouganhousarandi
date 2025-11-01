@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Gift, TrendingUp, Users, Sparkles } from "lucide-react";
+import { Gift, TrendingUp, Users, Sparkles, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Index = () => {
@@ -26,7 +26,10 @@ const Index = () => {
                 <Link to="/cadastro">Cadastrar Raspadinha</Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link to="/dashboard">Acessar Dashboard</Link>
+                <Link to="/meus-pontos">
+                  <Award className="mr-2 h-4 w-4" />
+                  Meus Pontos
+                </Link>
               </Button>
             </div>
           </div>

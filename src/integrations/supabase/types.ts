@@ -49,10 +49,13 @@ export type Database = {
       }
       customer_loyalty: {
         Row: {
+          auth_code: string | null
+          auth_code_expires_at: string | null
           created_at: string
           customer_name: string
           customer_phone: string
           id: string
+          last_login_at: string | null
           last_redemption_at: string | null
           points: number
           tier: string
@@ -60,10 +63,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auth_code?: string | null
+          auth_code_expires_at?: string | null
           created_at?: string
           customer_name: string
           customer_phone: string
           id?: string
+          last_login_at?: string | null
           last_redemption_at?: string | null
           points?: number
           tier?: string
@@ -71,10 +77,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auth_code?: string | null
+          auth_code_expires_at?: string | null
           created_at?: string
           customer_name?: string
           customer_phone?: string
           id?: string
+          last_login_at?: string | null
           last_redemption_at?: string | null
           points?: number
           tier?: string
@@ -117,6 +126,62 @@ export type Database = {
             columns: ["scratch_card_id"]
             isOneToOne: false
             referencedRelation: "scratch_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_queue: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          customer_name: string
+          customer_phone: string
+          error_message: string | null
+          id: string
+          last_attempt_at: string | null
+          notification_type: string
+          prize_name: string | null
+          registration_id: string | null
+          scheduled_for: string
+          serial_code: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          customer_name: string
+          customer_phone: string
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          notification_type: string
+          prize_name?: string | null
+          registration_id?: string | null
+          scheduled_for: string
+          serial_code?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          customer_name?: string
+          customer_phone?: string
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          notification_type?: string
+          prize_name?: string | null
+          registration_id?: string | null
+          scheduled_for?: string
+          serial_code?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_queue_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
             referencedColumns: ["id"]
           },
         ]
