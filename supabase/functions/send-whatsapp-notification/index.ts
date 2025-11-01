@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
 
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -11,6 +16,67 @@ interface WhatsAppNotificationRequest {
   customerPhone: string;
   prizeName: string;
   serialCode: string;
+}
+
+// Função para formatar número de telefone
+function formatPhoneNumber(phone: string): string {
+  // Remove todos os caracteres não numéricos
+  let cleaned = phone.replace(/\D/g, '');
+  
+  // Remove prefixo 55 se já existe
+  if (cleaned.startsWith('55')) {
+    cleaned = cleaned.substring(2);
+  }
+  
+  // Validar tamanho (deve ter 10 ou 11 dígitos)
+  if (cleaned.length < 10 || cleaned.length > 11) {
+    throw new Error(`Número inválido: ${phone} (deve ter 10 ou 11 dígitos após remover 55)`);
+  }
+  
+  // Adicionar código do país
+  const formatted = '55' + cleaned;
+  
+  console.log(`📱 Telefone formatado: ${phone} → ${formatted}`);
+  return formatted;
+}
+
+// Função para enviar com retry automático
+async function sendWithRetry(url: string, options: RequestInit, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 Tentativa ${attempt}/${maxRetries}`);
+      
+      const response = await fetch(url, options);
+      
+      if (response.ok) {
+        return response;
+      }
+      
+      // Não fazer retry em erros 4xx (exceto 429 rate limit)
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        return response; // Retornar erro sem retry
+      }
+      
+      // Aguardar antes de tentar novamente (exponential backoff)
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        console.log(`⏳ Aguardando ${delay}ms antes de tentar novamente...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+    } catch (error) {
+      console.error(`❌ Erro na tentativa ${attempt}:`, error);
+      if (attempt === maxRetries) throw error;
+      
+      // Aguardar antes de tentar novamente
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw new Error('Máximo de tentativas excedido');
 }
 
 serve(async (req) => {
@@ -25,9 +91,13 @@ serve(async (req) => {
     // Get environment variables
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
     const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY');
+    const EVOLUTION_INSTANCE_NAME = Deno.env.get('EVOLUTION_INSTANCE_NAME');
 
-    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
+    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE_NAME) {
       console.error('❌ Variáveis de ambiente não configuradas');
+      console.error('EVOLUTION_API_URL:', EVOLUTION_API_URL ? '✅' : '❌');
+      console.error('EVOLUTION_API_KEY:', EVOLUTION_API_KEY ? '✅' : '❌');
+      console.error('EVOLUTION_INSTANCE_NAME:', EVOLUTION_INSTANCE_NAME ? '✅' : '❌');
       throw new Error('Evolution API credentials not configured');
     }
 
@@ -42,15 +112,8 @@ serve(async (req) => {
       throw new Error('Missing required fields');
     }
 
-    // Format phone number: remove all non-numeric characters
-    let formattedPhone = customerPhone.replace(/\D/g, '');
-    
-    // Add Brazil country code (55) if not present
-    if (!formattedPhone.startsWith('55')) {
-      formattedPhone = '55' + formattedPhone;
-    }
-
-    console.log('📱 Número formatado:', formattedPhone);
+    // Format phone number using validation function
+    const formattedPhone = formatPhoneNumber(customerPhone);
 
     // Build WhatsApp message
     const message = `🎉 Parabéns, ${customerName}!
@@ -67,7 +130,6 @@ Obrigado por participar! 🎁`;
     console.log('💬 Mensagem construída:', message);
 
     // Prepare request body for Evolution API
-    // Evolution API expects: { number: "5511999999999", text: "message" }
     const evolutionBody = {
       number: formattedPhone,
       text: message,
@@ -77,10 +139,16 @@ Obrigado por participar! 🎁`;
       }
     };
 
-    console.log('🔄 Enviando para Evolution API:', EVOLUTION_API_URL);
+    // Construir URL completo com instância
+    const fullUrl = `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
+    
+    console.log('🔄 Enviando para Evolution API');
+    console.log('📡 URL completo:', fullUrl);
+    console.log('🔑 API Key (primeiros 10 chars):', EVOLUTION_API_KEY.substring(0, 10) + '...');
+    console.log('📦 Payload:', JSON.stringify(evolutionBody, null, 2));
 
-    // Call Evolution API
-    const evolutionResponse = await fetch(EVOLUTION_API_URL, {
+    // Call Evolution API with retry logic
+    const evolutionResponse = await sendWithRetry(fullUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -90,19 +158,52 @@ Obrigado por participar! 🎁`;
     });
 
     const responseText = await evolutionResponse.text();
-    console.log('📥 Resposta da Evolution API (status):', evolutionResponse.status);
-    console.log('📥 Resposta da Evolution API (body):', responseText);
+    console.log('📥 Status:', evolutionResponse.status);
+    console.log('📥 Headers:', JSON.stringify(Object.fromEntries(evolutionResponse.headers)));
+    console.log('📥 Body completo:', responseText);
+
+    let responseBody: any = null;
+    try {
+      responseBody = JSON.parse(responseText);
+    } catch (e) {
+      console.warn('⚠️ Resposta não é JSON válido');
+    }
 
     if (!evolutionResponse.ok) {
       console.error('❌ Erro na Evolution API:', evolutionResponse.status, responseText);
       
-      // Log specific error types
+      // Log specific error types with more details
       if (evolutionResponse.status === 401 || evolutionResponse.status === 403) {
         console.error('🔐 Erro de autenticação - verificar EVOLUTION_API_KEY');
       } else if (evolutionResponse.status === 404) {
         console.error('📡 Instância não encontrada - verificar EVOLUTION_INSTANCE_NAME');
+        console.error('🔍 Instância configurada:', EVOLUTION_INSTANCE_NAME);
       } else if (evolutionResponse.status === 400) {
-        console.error('📞 Número de telefone inválido:', formattedPhone);
+        console.error('❌ ERRO 400 - Payload ou URL incorreto');
+        console.error('🔍 Verificar:');
+        console.error('  1. URL completo:', fullUrl);
+        console.error('  2. Instância:', EVOLUTION_INSTANCE_NAME);
+        console.error('  3. Formato do número:', formattedPhone);
+        
+        if (responseBody) {
+          console.error('📋 Detalhes do erro:', JSON.stringify(responseBody, null, 2));
+        }
+      }
+
+      // Log to database
+      const { error: logError } = await supabase.from('whatsapp_logs').insert({
+        customer_phone: formattedPhone,
+        customer_name: customerName,
+        prize_name: prizeName,
+        serial_code: serialCode,
+        status: 'failed',
+        error_message: responseText,
+        response_status: evolutionResponse.status,
+        response_body: responseBody
+      });
+
+      if (logError) {
+        console.error('❌ Erro ao salvar log:', logError);
       }
 
       throw new Error(`Evolution API error: ${evolutionResponse.status} - ${responseText}`);
@@ -110,6 +211,21 @@ Obrigado por participar! 🎁`;
 
     console.log('✅ Mensagem WhatsApp enviada com sucesso!');
     console.log(`📊 Status da Evolution API: ${evolutionResponse.status}`);
+
+    // Log success to database
+    const { error: logError } = await supabase.from('whatsapp_logs').insert({
+      customer_phone: formattedPhone,
+      customer_name: customerName,
+      prize_name: prizeName,
+      serial_code: serialCode,
+      status: 'success',
+      response_status: evolutionResponse.status,
+      response_body: responseBody
+    });
+
+    if (logError) {
+      console.error('❌ Erro ao salvar log de sucesso:', logError);
+    }
 
     return new Response(
       JSON.stringify({ 
@@ -127,6 +243,7 @@ Obrigado por participar! 🎁`;
   } catch (error: any) {
     console.error('💥 Erro crítico ao enviar notificação WhatsApp:', error);
     console.error('📋 Detalhes do erro:', JSON.stringify(error, null, 2));
+    console.error('🔍 Stack trace:', error.stack);
     
     return new Response(
       JSON.stringify({ 

@@ -343,6 +343,48 @@ export type Database = {
           },
         ]
       }
+      whatsapp_logs: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          customer_name: string | null
+          customer_phone: string
+          error_message: string | null
+          id: string
+          prize_name: string | null
+          response_body: Json | null
+          response_status: number | null
+          serial_code: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone: string
+          error_message?: string | null
+          id?: string
+          prize_name?: string | null
+          response_body?: Json | null
+          response_status?: number | null
+          serial_code?: string | null
+          status: string
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone?: string
+          error_message?: string | null
+          id?: string
+          prize_name?: string | null
+          response_body?: Json | null
+          response_status?: number | null
+          serial_code?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
