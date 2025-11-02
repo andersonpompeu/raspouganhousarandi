@@ -155,7 +155,7 @@ export default function CompanyDashboard() {
           )
         `)
         .eq('scratch_cards.company_id', companyId!)
-        .or(`scratch_cards.serial_code.ilike.%${queryText}%,customer_phone.ilike.%${queryText}%,customer_name.ilike.%${queryText}%`);
+        .or(`customer_phone.ilike.*${queryText}*,customer_name.ilike.*${queryText}*,scratch_cards.serial_code.ilike.*${queryText}*`);
 
       if (error) throw error;
 
