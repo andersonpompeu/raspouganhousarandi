@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Award, TrendingUp, Phone, Mail, Trophy, Gift, Star } from 'lucide-react';
+import { Award, TrendingUp, Phone, Mail, Trophy, Gift, Star, Download, FileText } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { AchievementsDisplay } from '@/components/dashboard/AchievementsDisplay';
 
 export default function CustomerDashboard() {
   const navigate = useNavigate();
@@ -49,7 +50,8 @@ export default function CustomerDashboard() {
             *,
             prizes(*)
           ),
-          redemptions(*)
+          redemptions(*),
+          digital_receipts(receipt_url, qr_code_data)
         `)
         .eq('customer_phone', phone)
         .order('registered_at', { ascending: false });
@@ -59,6 +61,24 @@ export default function CustomerDashboard() {
     },
     enabled: isAuthenticated && !!phone,
   });
+
+  const handleGenerateReceipt = async (registrationId: string) => {
+    try {
+      toast.info('Gerando comprovante...');
+      
+      const { data, error } = await supabase.functions.invoke('generate-receipt', {
+        body: { registrationId }
+      });
+
+      if (error) throw error;
+
+      toast.success('Comprovante gerado!');
+      window.open(data.receiptUrl, '_blank');
+    } catch (error: any) {
+      console.error('Error generating receipt:', error);
+      toast.error('Erro ao gerar comprovante');
+    }
+  };
 
   const handleSendCode = async () => {
     if (!phone || phone.length < 10) {
@@ -320,6 +340,9 @@ export default function CustomerDashboard() {
           </Card>
         </div>
 
+        {/* Conquistas */}
+        <AchievementsDisplay customerPhone={phone} />
+
         {/* Redemptions History */}
         <Card>
           <CardHeader>
@@ -341,7 +364,7 @@ export default function CustomerDashboard() {
                     key={registration.id}
                     className="flex items-center justify-between p-4 border rounded-lg"
                   >
-                    <div className="space-y-1">
+                    <div className="flex-1 space-y-1">
                       <div className="font-medium">
                         {registration.scratch_cards.prizes?.name}
                       </div>
@@ -352,9 +375,30 @@ export default function CustomerDashboard() {
                         Código: {registration.scratch_cards.serial_code}
                       </div>
                     </div>
-                    <Badge variant={registration.redemptions?.length > 0 ? 'default' : 'secondary'}>
-                      {registration.redemptions?.length > 0 ? '✓ Retirado' : 'Pendente'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={registration.redemptions?.length > 0 ? 'default' : 'secondary'}>
+                        {registration.redemptions?.length > 0 ? '✓ Retirado' : 'Pendente'}
+                      </Badge>
+                      {registration.digital_receipts?.[0]?.receipt_url ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(registration.digital_receipts[0].receipt_url, '_blank')}
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          Ver
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleGenerateReceipt(registration.id)}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Gerar
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

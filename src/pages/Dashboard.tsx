@@ -15,6 +15,7 @@ import { CompanyUsersTable } from "@/components/dashboard/CompanyUsersTable";
 import { FinancialSettingsDialog } from "@/components/dashboard/FinancialSettingsDialog";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
 import { LoyaltyTable } from "@/components/dashboard/LoyaltyTable";
+import { LeaderboardTable } from "@/components/dashboard/LeaderboardTable";
 import { useAuth } from "@/hooks/useAuth";
 
 const Dashboard = () => {
@@ -169,8 +170,11 @@ const Dashboard = () => {
             <AnalyticsDashboard />
           </TabsContent>
 
-          <TabsContent value="loyalty" className="mt-6">
-            <LoyaltyTable />
+          <TabsContent value="loyalty" className="mt-6 space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <LoyaltyTable />
+              <LeaderboardTable />
+            </div>
           </TabsContent>
 
           <TabsContent value="companies" className="mt-6">

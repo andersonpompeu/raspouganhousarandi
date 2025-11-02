@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          badge_color: string
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          name: string
+          requirement_type: string
+          requirement_value: number
+        }
+        Insert: {
+          badge_color?: string
+          created_at?: string
+          description: string
+          icon: string
+          id?: string
+          name: string
+          requirement_type: string
+          requirement_value?: number
+        }
+        Update: {
+          badge_color?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+          requirement_type?: string
+          requirement_value?: number
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           commission_percentage: number
@@ -46,6 +79,35 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      customer_achievements: {
+        Row: {
+          achievement_id: string
+          customer_phone: string
+          id: string
+          unlocked_at: string
+        }
+        Insert: {
+          achievement_id: string
+          customer_phone: string
+          id?: string
+          unlocked_at?: string
+        }
+        Update: {
+          achievement_id?: string
+          customer_phone?: string
+          id?: string
+          unlocked_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_loyalty: {
         Row: {
@@ -91,6 +153,38 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      digital_receipts: {
+        Row: {
+          generated_at: string
+          id: string
+          qr_code_data: string
+          receipt_url: string
+          registration_id: string
+        }
+        Insert: {
+          generated_at?: string
+          id?: string
+          qr_code_data: string
+          receipt_url: string
+          registration_id: string
+        }
+        Update: {
+          generated_at?: string
+          id?: string
+          qr_code_data?: string
+          receipt_url?: string
+          registration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_receipts_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       financial_transactions: {
         Row: {
@@ -447,6 +541,36 @@ export type Database = {
           response_status?: number | null
           serial_code?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          bot_response: string | null
+          created_at: string
+          customer_phone: string
+          id: string
+          message_text: string
+          message_type: string
+          processed: boolean
+        }
+        Insert: {
+          bot_response?: string | null
+          created_at?: string
+          customer_phone: string
+          id?: string
+          message_text: string
+          message_type: string
+          processed?: boolean
+        }
+        Update: {
+          bot_response?: string | null
+          created_at?: string
+          customer_phone?: string
+          id?: string
+          message_text?: string
+          message_type?: string
+          processed?: boolean
         }
         Relationships: []
       }
