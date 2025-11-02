@@ -139,8 +139,14 @@ Obrigado por participar! 🎁`;
       }
     };
 
-    // Construir URL completo com instância
-    const fullUrl = `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
+    // Construir URL - remover barra final se existir
+    let baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
+    
+    // Se a URL já contém o path completo (incluindo instância), usar como está
+    // Caso contrário, adicionar o path
+    const fullUrl = baseUrl.includes('/message/sendText/') 
+      ? baseUrl 
+      : `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
     
     console.log('🔄 Enviando para Evolution API');
     console.log('📡 URL completo:', fullUrl);
