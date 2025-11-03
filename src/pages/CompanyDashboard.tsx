@@ -143,8 +143,8 @@ export default function CompanyDashboard() {
     try {
       const queryText = searchTerm.trim();
       
-      // Buscar por código (parcial), telefone ou nome em uma única query
-      const { data: registrations, error } = await supabase
+      // Buscar por telefone ou nome
+      let { data: registrations, error } = await supabase
         .from('registrations')
         .select(`
           *,
@@ -155,7 +155,35 @@ export default function CompanyDashboard() {
           )
         `)
         .eq('scratch_cards.company_id', companyId!)
-        .or(`customer_phone.ilike.*${queryText}*,customer_name.ilike.*${queryText}*,scratch_cards.serial_code.ilike.*${queryText}*`);
+        .or(`customer_phone.ilike.%${queryText}%,customer_name.ilike.%${queryText}%`);
+
+      // Se não encontrou, buscar por código serial
+      if (!registrations || registrations.length === 0) {
+        const result = await supabase
+          .from('scratch_cards')
+          .select(`
+            *,
+            prizes(*),
+            companies(*),
+            registrations(*)
+          `)
+          .eq('company_id', companyId!)
+          .ilike('serial_code', `%${queryText}%`);
+        
+        if (result.data && result.data.length > 0) {
+          // Transformar para o formato esperado
+          registrations = result.data.flatMap(card => 
+            card.registrations.map((reg: any) => ({
+              ...reg,
+              scratch_cards: {
+                ...card,
+                registrations: undefined
+              }
+            }))
+          );
+        }
+        error = result.error;
+      }
 
       if (error) throw error;
 
@@ -315,7 +343,14 @@ export default function CompanyDashboard() {
     if (!authLoading && !roleLoading) {
       if (!user) {
         navigate('/auth');
-      } else if (role && role !== 'company_partner') {
+        return;
+      }
+      if (role === null) {
+        // Se não tem role definido, redirecionar para dashboard
+        navigate('/dashboard');
+        return;
+      }
+      if (role !== 'company_partner') {
         navigate('/dashboard');
       }
     }
