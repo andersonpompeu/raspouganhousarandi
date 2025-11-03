@@ -40,7 +40,7 @@ function formatPhoneNumber(phone: string): string {
   return formatted;
 }
 
-// Função para enviar com retry automático
+// Função para enviar com retry automático com exponential backoff + jitter
 async function sendWithRetry(url: string, options: RequestInit, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -57,10 +57,12 @@ async function sendWithRetry(url: string, options: RequestInit, maxRetries = 3) 
         return response; // Retornar erro sem retry
       }
       
-      // Aguardar antes de tentar novamente (exponential backoff)
+      // Aguardar antes de tentar novamente (exponential backoff com jitter)
       if (attempt < maxRetries) {
-        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-        console.log(`⏳ Aguardando ${delay}ms antes de tentar novamente...`);
+        const baseDelay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        const jitter = Math.random() * 1000; // 0-1s de variação
+        const delay = baseDelay + jitter;
+        console.log(`⏳ Aguardando ${Math.round(delay)}ms antes de tentar novamente...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
       
@@ -68,15 +70,53 @@ async function sendWithRetry(url: string, options: RequestInit, maxRetries = 3) 
       console.error(`❌ Erro na tentativa ${attempt}:`, error);
       if (attempt === maxRetries) throw error;
       
-      // Aguardar antes de tentar novamente
+      // Aguardar antes de tentar novamente (exponential backoff com jitter)
       if (attempt < maxRetries) {
-        const delay = Math.pow(2, attempt) * 1000;
+        const baseDelay = Math.pow(2, attempt) * 1000;
+        const jitter = Math.random() * 1000;
+        const delay = baseDelay + jitter;
+        console.log(`⏳ Aguardando ${Math.round(delay)}ms antes de tentar novamente...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
   
   throw new Error('Máximo de tentativas excedido');
+}
+
+// Função para logging estruturado
+async function logWhatsAppAttempt(data: {
+  phone: string;
+  name: string;
+  prizeName?: string;
+  serialCode?: string;
+  status: 'success' | 'failed';
+  attemptNumber: number;
+  errorMessage?: string;
+  responseStatus?: number;
+  responseBody?: any;
+}) {
+  try {
+    const { error } = await supabase.from('whatsapp_logs').insert({
+      customer_phone: data.phone,
+      customer_name: data.name,
+      prize_name: data.prizeName || null,
+      serial_code: data.serialCode || null,
+      status: data.status,
+      attempts: data.attemptNumber,
+      error_message: data.errorMessage || null,
+      response_status: data.responseStatus || null,
+      response_body: data.responseBody || null,
+    });
+
+    if (error) {
+      console.error('❌ Erro ao salvar log:', error);
+    } else {
+      console.log(`✅ Log salvo: ${data.status} (tentativa ${data.attemptNumber})`);
+    }
+  } catch (error) {
+    console.error('💥 Erro crítico ao salvar log:', error);
+  }
 }
 
 serve(async (req) => {
@@ -139,17 +179,19 @@ Obrigado por participar! 🎁`;
       }
     };
 
-    // Construir URL - remover barra final se existir
-    let baseUrl = EVOLUTION_API_URL.replace(/\/$/, '');
+    // Construir URL de forma inteligente para evitar duplicação
+    let cleanUrl = EVOLUTION_API_URL.replace(/\/+$/, ''); // Remove barras finais
+    cleanUrl = cleanUrl.replace(/\/message\/sendText.*$/, ''); // Remove path antigo se existir
     
-    // Se a URL já contém o path completo (incluindo instância), usar como está
-    // Caso contrário, adicionar o path
-    const fullUrl = baseUrl.includes('/message/sendText/') 
-      ? baseUrl 
-      : `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
+    // Construir URL completa
+    const fullUrl = `${cleanUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
     
     console.log('🔄 Enviando para Evolution API');
-    console.log('📡 URL completo:', fullUrl);
+    console.log('🔍 URL construída:', {
+      original: EVOLUTION_API_URL,
+      cleaned: cleanUrl,
+      final: fullUrl
+    });
     console.log('🔑 API Key (primeiros 10 chars):', EVOLUTION_API_KEY.substring(0, 10) + '...');
     console.log('📦 Payload:', JSON.stringify(evolutionBody, null, 2));
 
@@ -196,21 +238,18 @@ Obrigado por participar! 🎁`;
         }
       }
 
-      // Log to database
-      const { error: logError } = await supabase.from('whatsapp_logs').insert({
-        customer_phone: formattedPhone,
-        customer_name: customerName,
-        prize_name: prizeName,
-        serial_code: serialCode,
+      // Log usando função estruturada
+      await logWhatsAppAttempt({
+        phone: formattedPhone,
+        name: customerName,
+        prizeName,
+        serialCode,
         status: 'failed',
-        error_message: responseText,
-        response_status: evolutionResponse.status,
-        response_body: responseBody
+        attemptNumber: 1,
+        errorMessage: responseText,
+        responseStatus: evolutionResponse.status,
+        responseBody
       });
-
-      if (logError) {
-        console.error('❌ Erro ao salvar log:', logError);
-      }
 
       throw new Error(`Evolution API error: ${evolutionResponse.status} - ${responseText}`);
     }
@@ -218,20 +257,17 @@ Obrigado por participar! 🎁`;
     console.log('✅ Mensagem WhatsApp enviada com sucesso!');
     console.log(`📊 Status da Evolution API: ${evolutionResponse.status}`);
 
-    // Log success to database
-    const { error: logError } = await supabase.from('whatsapp_logs').insert({
-      customer_phone: formattedPhone,
-      customer_name: customerName,
-      prize_name: prizeName,
-      serial_code: serialCode,
+    // Log success usando função estruturada
+    await logWhatsAppAttempt({
+      phone: formattedPhone,
+      name: customerName,
+      prizeName,
+      serialCode,
       status: 'success',
-      response_status: evolutionResponse.status,
-      response_body: responseBody
+      attemptNumber: 1,
+      responseStatus: evolutionResponse.status,
+      responseBody
     });
-
-    if (logError) {
-      console.error('❌ Erro ao salvar log de sucesso:', logError);
-    }
 
     return new Response(
       JSON.stringify({ 

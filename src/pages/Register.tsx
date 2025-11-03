@@ -27,9 +27,9 @@ type ScratchCard = {
 };
 
 const registrationSchema = z.object({
-  name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
-  email: z.string().email("Email inválido").max(255),
-  whatsapp: z.string().regex(/^\(\d{2}\) \d{4,5}-\d{4}$/, "Telefone inválido (formato: (XX) XXXXX-XXXX)")
+  name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(100, "Nome muito longo"),
+  email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
+  whatsapp: z.string().min(14, "Telefone incompleto").max(15, "Telefone inválido")
 });
 const Register = () => {
   const [searchParams] = useSearchParams();
@@ -59,6 +59,7 @@ const Register = () => {
     if (e) e.preventDefault();
     setLoading(true);
     setError("");
+    setIsValidated(false);
     
     const codeToVerify = codeOverride || formData.codigo.trim();
     
@@ -90,6 +91,22 @@ const Register = () => {
       setLoading(false);
     }
   };
+  // Validação em tempo real
+  const validateField = (field: keyof typeof formData, value: string) => {
+    try {
+      const fieldSchema = registrationSchema.pick({ [field]: true } as any);
+      fieldSchema.parse({ [field]: value });
+      setFormErrors(prev => ({ ...prev, [field]: '' }));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setFormErrors(prev => ({ 
+          ...prev, 
+          [field]: error.errors[0]?.message || '' 
+        }));
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scratchCard) return;
@@ -107,6 +124,7 @@ const Register = () => {
           }
         });
         setFormErrors(errors);
+        toast.error("Por favor, corrija os erros no formulário");
         return;
       }
     }
@@ -312,7 +330,11 @@ const Register = () => {
                   id="name" 
                   placeholder="Digite seu nome completo" 
                   value={formData.name} 
-                  onChange={e => setFormData({ ...formData, name: e.target.value })} 
+                  onChange={e => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, name: value });
+                    validateField('name', value);
+                  }}
                   required
                   className={formErrors.name ? "border-red-500" : ""}
                 />
@@ -326,7 +348,11 @@ const Register = () => {
                 <InputMask
                   mask="(99) 99999-9999"
                   value={formData.whatsapp}
-                  onChange={e => setFormData({ ...formData, whatsapp: e.target.value })}
+                  onChange={e => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, whatsapp: value });
+                    validateField('whatsapp', value);
+                  }}
                 >
                   {/* @ts-ignore - InputMask types issue */}
                   {(inputProps: any) => (
@@ -352,7 +378,11 @@ const Register = () => {
                   type="email" 
                   placeholder="seu@email.com" 
                   value={formData.email} 
-                  onChange={e => setFormData({ ...formData, email: e.target.value })} 
+                  onChange={e => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, email: value });
+                    validateField('email', value);
+                  }}
                   required
                   className={formErrors.email ? "border-red-500" : ""}
                 />

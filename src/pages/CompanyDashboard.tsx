@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function CompanyDashboard() {
   const { user, signOut, loading: authLoading } = useAuth();
@@ -32,6 +33,9 @@ export default function CompanyDashboard() {
   const [whatsappStatus, setWhatsappStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
+  
+  // Debounce search query (não usado no momento mas pronto para uso futuro)
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   // Pre-fill attendant name with user's name and load recent searches
   useEffect(() => {
@@ -46,21 +50,25 @@ export default function CompanyDashboard() {
     loadUserName();
 
     // Load recent searches from localStorage
-    const saved = localStorage.getItem("recentSearches");
-    if (saved) {
-      setRecentSearches(JSON.parse(saved));
+    if (companyId) {
+      const saved = localStorage.getItem(`recentSearches_${companyId}`);
+      if (saved) {
+        setRecentSearches(JSON.parse(saved));
+      }
     }
   }, [user]);
 
   const saveRecentSearch = (query: string) => {
-    const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5);
+    const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 10);
     setRecentSearches(updated);
-    localStorage.setItem("recentSearches", JSON.stringify(updated));
+    localStorage.setItem(`recentSearches_${companyId}`, JSON.stringify(updated));
   };
 
-  // Buscar estatísticas
+  // Buscar estatísticas com cache
   const { data: stats } = useQuery({
     queryKey: ['company-stats', companyId],
+    staleTime: 60000, // 1 minuto
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!companyId) return null;
 
@@ -96,9 +104,11 @@ export default function CompanyDashboard() {
     enabled: !!companyId,
   });
 
-  // Buscar últimas entregas
+  // Buscar últimas entregas com cache
   const { data: recentRedemptions } = useQuery({
     queryKey: ['recent-redemptions', companyId],
+    staleTime: 30000, // 30 segundos
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!companyId) return [];
 
@@ -143,8 +153,8 @@ export default function CompanyDashboard() {
     try {
       const queryText = searchTerm.trim();
       
-      // Buscar por telefone ou nome
-      let { data: registrations, error } = await supabase
+      // Buscar em uma única query otimizada
+      const { data: registrations, error } = await supabase
         .from('registrations')
         .select(`
           *,
@@ -155,35 +165,7 @@ export default function CompanyDashboard() {
           )
         `)
         .eq('scratch_cards.company_id', companyId!)
-        .or(`customer_phone.ilike.%${queryText}%,customer_name.ilike.%${queryText}%`);
-
-      // Se não encontrou, buscar por código serial
-      if (!registrations || registrations.length === 0) {
-        const result = await supabase
-          .from('scratch_cards')
-          .select(`
-            *,
-            prizes(*),
-            companies(*),
-            registrations(*)
-          `)
-          .eq('company_id', companyId!)
-          .ilike('serial_code', `%${queryText}%`);
-        
-        if (result.data && result.data.length > 0) {
-          // Transformar para o formato esperado
-          registrations = result.data.flatMap(card => 
-            card.registrations.map((reg: any) => ({
-              ...reg,
-              scratch_cards: {
-                ...card,
-                registrations: undefined
-              }
-            }))
-          );
-        }
-        error = result.error;
-      }
+        .or(`customer_phone.ilike.*${queryText}*,customer_name.ilike.*${queryText}*,scratch_cards.serial_code.ilike.*${queryText}*`);
 
       if (error) throw error;
 
@@ -320,7 +302,7 @@ export default function CompanyDashboard() {
 
       setRedemptionSuccess(true);
       
-      // Limpar formulário após 3 segundos
+      // Limpar formulário após 5 segundos (mais tempo para ver mensagem)
       setTimeout(() => {
         setSearchQuery("");
         setNotes("");
@@ -328,7 +310,8 @@ export default function CompanyDashboard() {
         setDocumentNumber("");
         setScratchCard(null);
         setWhatsappStatus('idle');
-      }, 3000);
+        setRedemptionSuccess(false);
+      }, 5000);
     } catch (error: any) {
       toast({
         title: "Erro ao confirmar",
@@ -341,20 +324,35 @@ export default function CompanyDashboard() {
   // Redirecionar se não for company_partner
   useEffect(() => {
     if (!authLoading && !roleLoading) {
+      // 1. Não autenticado -> Login
       if (!user) {
         navigate('/auth');
         return;
       }
-      if (role === null) {
-        // Se não tem role definido, redirecionar para dashboard
+      
+      // 2. Sem role ou role incorreto -> Dashboard admin
+      if (!role || role !== 'company_partner') {
+        toast({
+          title: "Acesso negado",
+          description: "Você não tem permissão para acessar esta página.",
+          variant: "destructive"
+        });
         navigate('/dashboard');
         return;
       }
-      if (role !== 'company_partner') {
+      
+      // 3. Company partner sem companyId -> Erro
+      if (!companyId) {
+        toast({
+          title: "Erro de configuração",
+          description: "Empresa não configurada. Entre em contato com o administrador.",
+          variant: "destructive"
+        });
         navigate('/dashboard');
+        return;
       }
     }
-  }, [user, role, authLoading, roleLoading, navigate]);
+  }, [user, role, companyId, authLoading, roleLoading, navigate, toast]);
 
   if (authLoading || roleLoading) {
     return (
