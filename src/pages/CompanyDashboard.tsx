@@ -66,34 +66,44 @@ export default function CompanyDashboard() {
 
   // Buscar estatísticas com cache
   const { data: stats } = useQuery({
-    queryKey: ['company-stats', companyId],
+    queryKey: ['company-stats', companyId, role],
     staleTime: 60000, // 1 minuto
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      if (!companyId) return null;
-
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Buscar IDs das scratch_cards da empresa
-      const { data: scratchCardIds } = await supabase
-        .from('scratch_cards')
-        .select('id')
-        .eq('company_id', companyId);
+      // Se tiver companyId, buscar IDs das scratch_cards da empresa
+      let cardIds: string[] = [];
+      
+      if (companyId) {
+        const { data: scratchCardIds } = await supabase
+          .from('scratch_cards')
+          .select('id')
+          .eq('company_id', companyId);
+        cardIds = scratchCardIds?.map(sc => sc.id) || [];
+      }
 
-      const cardIds = scratchCardIds?.map(sc => sc.id) || [];
+      // Construir queries com ou sem filtro de empresa
+      let todayQuery = supabase
+        .from('redemptions')
+        .select('id', { count: 'exact' })
+        .gte('redeemed_at', today.toISOString());
+      
+      let monthQuery = supabase
+        .from('redemptions')
+        .select('id', { count: 'exact' })
+        .gte('redeemed_at', new Date(today.getFullYear(), today.getMonth(), 1).toISOString());
+
+      // Se tiver companyId, filtrar por cards da empresa
+      if (companyId && cardIds.length > 0) {
+        todayQuery = todayQuery.in('scratch_card_id', cardIds);
+        monthQuery = monthQuery.in('scratch_card_id', cardIds);
+      }
 
       const [todayResult, monthResult] = await Promise.all([
-        supabase
-          .from('redemptions')
-          .select('id', { count: 'exact' })
-          .gte('redeemed_at', today.toISOString())
-          .in('scratch_card_id', cardIds),
-        supabase
-          .from('redemptions')
-          .select('id', { count: 'exact' })
-          .gte('redeemed_at', new Date(today.getFullYear(), today.getMonth(), 1).toISOString())
-          .in('scratch_card_id', cardIds),
+        todayQuery,
+        monthQuery,
       ]);
 
       return {
@@ -101,35 +111,40 @@ export default function CompanyDashboard() {
         month: monthResult.count || 0,
       };
     },
-    enabled: !!companyId,
+    enabled: !!user,
   });
 
   // Buscar últimas entregas com cache
   const { data: recentRedemptions } = useQuery({
-    queryKey: ['recent-redemptions', companyId],
+    queryKey: ['recent-redemptions', companyId, role],
     staleTime: 30000, // 30 segundos
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      if (!companyId) return [];
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('redemptions')
         .select(`
           *,
           scratch_cards!inner(
             serial_code,
             prizes(name),
-            registrations(customer_name, customer_phone)
+            registrations(customer_name, customer_phone),
+            companies(name)
           )
-        `)
-        .eq('scratch_cards.company_id', companyId)
+        `);
+
+      // Se tiver companyId, filtrar por empresa
+      if (companyId) {
+        query = query.eq('scratch_cards.company_id', companyId);
+      }
+
+      const { data, error } = await query
         .order('redeemed_at', { ascending: false })
         .limit(5);
 
       if (error) throw error;
       return data || [];
     },
-    enabled: !!companyId,
+    enabled: !!user,
   });
 
   const handleSearch = async (e?: React.FormEvent, query?: string) => {
@@ -154,7 +169,7 @@ export default function CompanyDashboard() {
       const queryText = searchTerm.trim();
       
       // Buscar em uma única query otimizada
-      const { data: registrations, error } = await supabase
+      let query = supabase
         .from('registrations')
         .select(`
           *,
@@ -163,8 +178,14 @@ export default function CompanyDashboard() {
             prizes(*),
             companies(*)
           )
-        `)
-        .eq('scratch_cards.company_id', companyId!)
+        `);
+      
+      // Se não for admin ou se tiver companyId, filtrar por empresa
+      if (companyId) {
+        query = query.eq('scratch_cards.company_id', companyId);
+      }
+      
+      const { data: registrations, error } = await query
         .or(`customer_phone.ilike.*${queryText}*,customer_name.ilike.*${queryText}*,scratch_cards.serial_code.ilike.*${queryText}*`);
 
       if (error) throw error;
@@ -321,7 +342,7 @@ export default function CompanyDashboard() {
     }
   };
 
-  // Redirecionar se não for company_partner
+  // Controle de acesso: permitir admin e company_partner
   useEffect(() => {
     if (!authLoading && !roleLoading) {
       // 1. Não autenticado -> Login
@@ -330,8 +351,8 @@ export default function CompanyDashboard() {
         return;
       }
       
-      // 2. Sem role ou role incorreto -> Dashboard admin
-      if (!role || role !== 'company_partner') {
+      // 2. Sem role ou role incorreto -> Redirecionar
+      if (!role || (role !== 'company_partner' && role !== 'admin')) {
         toast({
           title: "Acesso negado",
           description: "Você não tem permissão para acessar esta página.",
@@ -341,8 +362,8 @@ export default function CompanyDashboard() {
         return;
       }
       
-      // 3. Company partner sem companyId -> Erro
-      if (!companyId) {
+      // 3. Company partner sem companyId -> Erro (admin pode não ter companyId)
+      if (role === 'company_partner' && !companyId) {
         toast({
           title: "Erro de configuração",
           description: "Empresa não configurada. Entre em contato com o administrador.",
@@ -362,7 +383,7 @@ export default function CompanyDashboard() {
     );
   }
 
-  if (!user || role !== 'company_partner') {
+  if (!user || (role !== 'company_partner' && role !== 'admin')) {
     return null;
   }
 
@@ -373,7 +394,12 @@ export default function CompanyDashboard() {
         <div className="container max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Package className="w-6 h-6 text-primary" />
-            <h1 className="text-xl font-bold">Validações</h1>
+            <div>
+              <h1 className="text-xl font-bold">Validações</h1>
+              {role === 'admin' && !companyId && (
+                <p className="text-xs text-muted-foreground">Modo Administrador - Todas as empresas</p>
+              )}
+            </div>
           </div>
           <Button variant="ghost" size="sm" onClick={signOut}>
             <LogOut className="w-4 h-4" />
@@ -474,6 +500,12 @@ export default function CompanyDashboard() {
                   <p className="text-muted-foreground">Cliente</p>
                   <p className="font-semibold">{scratchCard.registrations?.[0]?.customer_name}</p>
                 </div>
+                {role === 'admin' && !companyId && scratchCard.scratch_cards?.companies?.name && (
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">Empresa</p>
+                    <p className="font-semibold text-primary">{scratchCard.scratch_cards.companies.name}</p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3 pt-4 border-t">
@@ -638,6 +670,11 @@ export default function CompanyDashboard() {
                           <p className="text-xs text-muted-foreground mt-1">
                             Código: {redemption.scratch_cards?.serial_code}
                           </p>
+                          {role === 'admin' && !companyId && redemption.scratch_cards?.companies?.name && (
+                            <p className="text-xs text-primary mt-1 font-medium">
+                              Empresa: {redemption.scratch_cards.companies.name}
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <p className="text-xs text-muted-foreground whitespace-nowrap">
