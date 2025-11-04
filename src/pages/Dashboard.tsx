@@ -17,19 +17,43 @@ import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
 import { LoyaltyTable } from "@/components/dashboard/LoyaltyTable";
 import { LeaderboardTable } from "@/components/dashboard/LeaderboardTable";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { role, loading: roleLoading } = useUserRole(user?.id);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
+      return;
     }
-  }, [user, loading, navigate]);
 
-  if (loading) {
+    // Verificar role após carregar
+    if (!loading && !roleLoading && user) {
+      if (role === 'company_partner') {
+        toast({
+          title: "Acesso Negado",
+          description: "Você não tem permissão para acessar o painel administrativo.",
+          variant: "destructive",
+        });
+        navigate("/company");
+      } else if (role !== 'admin') {
+        toast({
+          title: "Acesso Negado",
+          description: "Apenas administradores podem acessar esta área.",
+          variant: "destructive",
+        });
+        navigate("/auth");
+      }
+    }
+  }, [user, loading, roleLoading, role, navigate, toast]);
+
+  if (loading || roleLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -40,7 +64,7 @@ const Dashboard = () => {
     );
   }
 
-  if (!user) return null;
+  if (!user || role !== 'admin') return null;
 
   return (
     <div className="min-h-screen bg-background">
