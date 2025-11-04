@@ -27,11 +27,12 @@ const Auth = () => {
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        if (roleData?.role === 'company_partner') {
-          navigate('/company');
-        } else {
+        if (roleData?.role === 'admin') {
           navigate('/dashboard');
+        } else if (roleData?.role === 'company_partner') {
+          navigate('/company');
         }
+        // Se não tiver role válido, permanece na página de auth
       }
     };
     checkAuth();
@@ -56,13 +57,22 @@ const Auth = () => {
         .eq('user_id', data.user.id)
         .maybeSingle();
 
+      if (!roleData?.role) {
+        toast.error("Usuário sem permissões atribuídas. Entre em contato com o administrador.");
+        await supabase.auth.signOut();
+        return;
+      }
+
       toast.success("Login realizado com sucesso!");
       
       // Redirecionar baseado no role
-      if (roleData?.role === 'company_partner') {
+      if (roleData.role === 'admin') {
+        navigate("/dashboard");
+      } else if (roleData.role === 'company_partner') {
         navigate("/company");
       } else {
-        navigate("/dashboard");
+        toast.error("Role não reconhecido. Entre em contato com o administrador.");
+        await supabase.auth.signOut();
       }
     } catch (error: any) {
       toast.error(error.message || "Erro ao fazer login");
@@ -89,8 +99,8 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast.success("Conta criada com sucesso! Você já pode fazer login.");
-      navigate("/dashboard");
+      toast.success("Conta criada! Um administrador precisa atribuir permissões antes do primeiro acesso.");
+      // Não redireciona automaticamente, usuário precisa fazer login após ter role atribuído
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar conta");
     } finally {
