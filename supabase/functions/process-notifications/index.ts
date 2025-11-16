@@ -54,31 +54,54 @@ serve(async (req) => {
           })
           .eq('id', notification.id);
 
-        // Enviar via WhatsApp
-        const { data, error: whatsappError } = await supabase.functions.invoke('send-whatsapp-notification', {
-          body: {
-            customerName: notification.customer_name,
-            customerPhone: notification.customer_phone,
-            prizeName: notification.prize_name || 'Seu prêmio',
-            serialCode: notification.serial_code || '',
-          },
-        });
+        // Verificar tipo de notificação
+        if (notification.notification_type === 'achievement_check') {
+          // Processar verificação de conquistas
+          const { error: achievementError } = await supabase.functions.invoke('check-achievements', {
+            body: {
+              customerPhone: notification.customer_phone,
+            },
+          });
 
-        if (whatsappError || !data?.success) {
-          throw new Error(data?.error || 'Failed to send WhatsApp');
+          if (achievementError) {
+            throw new Error(achievementError.message || 'Failed to check achievements');
+          }
+
+          // Marcar como processada
+          await supabase
+            .from('notification_queue')
+            .update({ status: 'sent' })
+            .eq('id', notification.id);
+
+          console.log(`✅ Verificação de conquistas ${notification.id} processada com sucesso`);
+          successCount++;
+        } else {
+          // Enviar via WhatsApp (notificação padrão)
+          const { data, error: whatsappError } = await supabase.functions.invoke('send-whatsapp-notification', {
+            body: {
+              customerName: notification.customer_name,
+              customerPhone: notification.customer_phone,
+              prizeName: notification.prize_name || 'Seu prêmio',
+              serialCode: notification.serial_code || '',
+            },
+          });
+
+          if (whatsappError || !data?.success) {
+            throw new Error(data?.error || 'Failed to send WhatsApp');
+          }
+
+          // Marcar como enviada
+          await supabase
+            .from('notification_queue')
+            .update({ status: 'sent' })
+            .eq('id', notification.id);
+
+          console.log(`✅ Notificação ${notification.id} enviada com sucesso`);
+          successCount++;
         }
 
-        // Marcar como enviada
-        await supabase
-          .from('notification_queue')
-          .update({ status: 'sent' })
-          .eq('id', notification.id);
-
-        console.log(`✅ Notificação ${notification.id} enviada com sucesso`);
-        successCount++;
-
       } catch (error: any) {
-        console.error(`❌ Erro ao enviar notificação ${notification.id}:`, error);
+        console.error(`❌ Erro ao processar notificação ${notification.id}:`, error);
         
         // Se atingiu 3 tentativas, marcar como failed
         if (notification.attempts + 1 >= 3) {

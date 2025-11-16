@@ -93,7 +93,7 @@ const Auth = () => {
           data: {
             full_name: signupData.fullName,
           },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth`,
         },
       });
 

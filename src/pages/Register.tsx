@@ -29,7 +29,9 @@ type ScratchCard = {
 const registrationSchema = z.object({
   name: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(100, "Nome muito longo"),
   email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
-  whatsapp: z.string().min(14, "Telefone incompleto").max(15, "Telefone inválido")
+  whatsapp: z.string()
+    .transform(val => val.replace(/\D/g, ''))
+    .refine(val => val.length >= 10 && val.length <= 11, "Telefone inválido")
 });
 const Register = () => {
   const [searchParams] = useSearchParams();
@@ -328,6 +330,7 @@ const Register = () => {
                 <Label htmlFor="name">Nome Completo *</Label>
                 <Input 
                   id="name" 
+                  name="name"
                   placeholder="Digite seu nome completo" 
                   value={formData.name} 
                   onChange={e => {
@@ -336,10 +339,13 @@ const Register = () => {
                     validateField('name', value);
                   }}
                   required
+                  aria-required="true"
+                  aria-invalid={!!formErrors.name}
+                  aria-describedby={formErrors.name ? "name-error" : undefined}
                   className={formErrors.name ? "border-red-500" : ""}
                 />
                 {formErrors.name && (
-                  <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>
+                  <p id="name-error" className="text-xs text-red-500 mt-1" role="alert">{formErrors.name}</p>
                 )}
               </div>
 
@@ -359,15 +365,19 @@ const Register = () => {
                     <Input
                       {...inputProps}
                       id="whatsapp"
+                      name="whatsapp"
                       type="tel"
                       placeholder="(00) 00000-0000"
                       required
+                      aria-required="true"
+                      aria-invalid={!!formErrors.whatsapp}
+                      aria-describedby={formErrors.whatsapp ? "whatsapp-error" : undefined}
                       className={formErrors.whatsapp ? "border-red-500" : ""}
                     />
                   )}
                 </InputMask>
                 {formErrors.whatsapp && (
-                  <p className="text-xs text-red-500 mt-1">{formErrors.whatsapp}</p>
+                  <p id="whatsapp-error" className="text-xs text-red-500 mt-1" role="alert">{formErrors.whatsapp}</p>
                 )}
               </div>
 
@@ -375,6 +385,7 @@ const Register = () => {
                 <Label htmlFor="email">E-mail *</Label>
                 <Input 
                   id="email" 
+                  name="email"
                   type="email" 
                   placeholder="seu@email.com" 
                   value={formData.email} 
@@ -384,10 +395,13 @@ const Register = () => {
                     validateField('email', value);
                   }}
                   required
+                  aria-required="true"
+                  aria-invalid={!!formErrors.email}
+                  aria-describedby={formErrors.email ? "email-error" : undefined}
                   className={formErrors.email ? "border-red-500" : ""}
                 />
                 {formErrors.email && (
-                  <p className="text-xs text-red-500 mt-1">{formErrors.email}</p>
+                  <p id="email-error" className="text-xs text-red-500 mt-1" role="alert">{formErrors.email}</p>
                 )}
               </div>
 
