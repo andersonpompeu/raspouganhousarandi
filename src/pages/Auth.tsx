@@ -15,11 +15,14 @@ const Auth = () => {
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [signupData, setSignupData] = useState({ email: "", password: "", fullName: "" });
 
-  // Verificar se já está autenticado
+  // Verificar se já está autenticado e redirecionar
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('[Auth] Checking authentication...');
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
+        console.log('[Auth] User is authenticated, checking role...');
         // Verificar role
         const { data: roleData } = await supabase
           .from('user_roles')
@@ -27,12 +30,19 @@ const Auth = () => {
           .eq('user_id', session.user.id)
           .maybeSingle();
 
+        console.log('[Auth] User role:', roleData?.role);
+
         if (roleData?.role === 'admin') {
+          console.log('[Auth] Redirecting admin to /dashboard');
           navigate('/dashboard');
         } else if (roleData?.role === 'company_partner') {
+          console.log('[Auth] Redirecting company_partner to /company');
           navigate('/company');
+        } else {
+          console.log('[Auth] No valid role, staying on auth page');
         }
-        // Se não tiver role válido, permanece na página de auth
+      } else {
+        console.log('[Auth] No session found, staying on auth page');
       }
     };
     checkAuth();
