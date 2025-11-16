@@ -12,6 +12,7 @@ import CompanyDashboard from "./pages/CompanyDashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import NotFound from "./pages/NotFound";
 import ValidateRedirect from "./components/ValidateRedirect";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,8 +35,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/company" element={<CompanyDashboard />} />
+            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><Dashboard /></ProtectedRoute>} />
+            <Route path="/company" element={<ProtectedRoute allowedRoles={['admin','company_partner']}><CompanyDashboard /></ProtectedRoute>} />
             <Route path="/validate/:serial" element={<ValidateRedirect />} />
             <Route path="/cadastro" element={<Register />} />
             <Route path="/cadastrar" element={<Navigate to="/cadastro" replace />} />
