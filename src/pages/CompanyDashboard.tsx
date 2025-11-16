@@ -366,50 +366,6 @@ export default function CompanyDashboard() {
     }
   };
 
-  // Controle de acesso: permitir admin e company_partner
-  useEffect(() => {
-    if (!authLoading && !roleLoading) {
-      // 1. Não autenticado -> Login
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
-      
-      // 2. Sem role ou role incorreto -> Redirecionar
-      if (!role || (role !== 'company_partner' && role !== 'admin')) {
-        toast({
-          title: "Acesso negado",
-          description: "Você não tem permissão para acessar esta página.",
-          variant: "destructive"
-        });
-        navigate('/dashboard');
-        return;
-      }
-      
-      // 3. Company partner sem companyId -> Erro (admin pode não ter companyId)
-      if (role === 'company_partner' && !companyId) {
-        toast({
-          title: "Erro de configuração",
-          description: "Empresa não configurada. Entre em contato com o administrador.",
-          variant: "destructive"
-        });
-        navigate('/dashboard');
-        return;
-      }
-    }
-  }, [user, role, companyId, authLoading, roleLoading, navigate, toast]);
-
-  if (authLoading || roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user || (role !== 'company_partner' && role !== 'admin')) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
