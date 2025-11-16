@@ -34,8 +34,15 @@ export default function CompanyDashboard() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   
-  // Debounce search query (não usado no momento mas pronto para uso futuro)
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  // Reset whatsapp status after success
+  useEffect(() => {
+    if (whatsappStatus === 'success') {
+      const timer = setTimeout(() => {
+        setWhatsappStatus('idle');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [whatsappStatus]);
 
   // Pre-fill attendant name with user's name and load recent searches
   useEffect(() => {
@@ -59,9 +66,19 @@ export default function CompanyDashboard() {
   }, [user]);
 
   const saveRecentSearch = (query: string) => {
-    const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 10);
-    setRecentSearches(updated);
-    localStorage.setItem(`recentSearches_${companyId}`, JSON.stringify(updated));
+    if (!companyId) return;
+    
+    try {
+      const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 10);
+      setRecentSearches(updated);
+      localStorage.setItem(`recentSearches_${companyId}`, JSON.stringify(updated));
+    } catch (error) {
+      // Handle QuotaExceededError silently
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.warn('LocalStorage quota exceeded, clearing old searches');
+        localStorage.removeItem(`recentSearches_${companyId}`);
+      }
+    }
   };
 
   // Buscar estatísticas com cache
@@ -168,15 +185,22 @@ export default function CompanyDashboard() {
     try {
       const queryText = searchTerm.trim();
       
-      // Buscar em uma única query otimizada
+      // Buscar em uma única query otimizada usando índices GIN
       let query = supabase
         .from('registrations')
         .select(`
-          *,
+          id,
+          customer_name,
+          customer_phone,
+          customer_email,
+          registered_at,
           scratch_cards!inner(
-            *,
-            prizes(*),
-            companies(*)
+            id,
+            serial_code,
+            status,
+            company_id,
+            prizes(name, description, prize_value),
+            companies(name, contact_phone)
           )
         `);
       

@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CompanyDialog } from "./CompanyDialog";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const sb = supabase as any;
 
@@ -24,6 +25,7 @@ export const CompaniesTable = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const fetchCompanies = async () => {
     try {
@@ -45,8 +47,16 @@ export const CompaniesTable = () => {
     fetchCompanies();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja remover esta empresa?")) return;
+  const handleDelete = async (id: string, companyName: string) => {
+    const confirmed = await confirm({
+      title: 'Remover Empresa',
+      description: `Tem certeza que deseja remover a empresa "${companyName}"? Esta ação não pode ser desfeita.`,
+      confirmText: 'Remover',
+      cancelText: 'Cancelar',
+      variant: 'destructive',
+    });
+
+    if (!confirmed) return;
 
     try {
       const { error } = await sb
@@ -125,7 +135,8 @@ export const CompaniesTable = () => {
                         <Button 
                           variant="outline" 
                           size="icon" 
-                          onClick={() => handleDelete(company.id)}
+                          onClick={() => handleDelete(company.id, company.name)}
+                          aria-label={`Remover empresa ${company.name}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -145,6 +156,7 @@ export const CompaniesTable = () => {
         company={selectedCompany}
         onSuccess={fetchCompanies}
       />
+      <ConfirmDialog />
     </>
   );
 };
