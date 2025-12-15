@@ -57,37 +57,57 @@ const Register = () => {
       handleVerifyCode(null, codeFromUrl);
     }
   }, [codeFromUrl]);
+  // Mapeamento de status para mensagens de erro
+  const STATUS_MESSAGES: Record<string, string> = {
+    'registered': 'Esta raspadinha já foi cadastrada anteriormente.',
+    'redeemed': 'Este prêmio já foi resgatado.',
+    'expired': 'Esta raspadinha expirou.',
+    'cancelled': 'Esta raspadinha foi cancelada.',
+  };
+
   const handleVerifyCode = async (e: React.FormEvent | null, codeOverride?: string) => {
     if (e) e.preventDefault();
     setLoading(true);
     setError("");
     setIsValidated(false);
     
-    const codeToVerify = codeOverride || formData.codigo.trim();
+    const codeToVerify = (codeOverride || formData.codigo.trim()).toUpperCase();
+    
+    console.log('🔍 Buscando raspadinha:', codeToVerify);
     
     try {
-      const {
-        data,
-        error
-      } = await sb.from("scratch_cards").select(`
+      const { data, error } = await sb
+        .from("scratch_cards")
+        .select(`
           *,
-          prizes!prize_id(name, description),
-          companies!company_id(name)
-        `).eq("serial_code", codeToVerify).maybeSingle();
-      if (error) throw error;
+          prizes:prize_id(name, description),
+          companies:company_id(name, contact_phone)
+        `)
+        .eq("serial_code", codeToVerify)
+        .maybeSingle();
+      
+      console.log('📦 Resultado da busca:', data);
+      console.log('📊 Status atual:', data?.status);
+      
+      if (error) {
+        console.error('❌ Erro na query:', error);
+        throw error;
+      }
+      
       if (!data) {
         setError("Código de raspadinha não encontrado. Verifique e tente novamente.");
-      } else if (data.status === "registered") {
-        setError("Esta raspadinha já foi cadastrada anteriormente.");
-      } else if (data.status === "redeemed") {
-        setError("Este prêmio já foi resgatado.");
+      } else if (data.status !== 'available') {
+        // Verificar se o status é diferente de 'available'
+        setError(STATUS_MESSAGES[data.status] || 'Esta raspadinha não está disponível.');
       } else if (!data.prizes) {
         setError("Esta raspadinha não possui um prêmio associado.");
       } else {
+        console.log('✅ Raspadinha válida, indo para formulário');
         setScratchCard(data as any);
         setStep("form");
       }
     } catch (error: any) {
+      console.error('❌ Erro ao verificar:', error);
       setError("Erro ao verificar código. Tente novamente.");
     } finally {
       setLoading(false);
@@ -493,9 +513,12 @@ const Register = () => {
       {showScanner && (
         <QRScanner
           onScanSuccess={(code) => {
-            setFormData({ ...formData, codigo: code.toUpperCase() });
+            const upperCode = code.toUpperCase();
+            setFormData({ ...formData, codigo: upperCode });
             setShowScanner(false);
-            toast.success("QR Code lido! Código preenchido automaticamente");
+            toast.success("QR Code lido! Verificando...");
+            // AUTO-VERIFICAR imediatamente após escanear
+            handleVerifyCode(null, upperCode);
           }}
           onClose={() => setShowScanner(false)}
         />
