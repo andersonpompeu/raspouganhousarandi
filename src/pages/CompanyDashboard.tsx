@@ -185,7 +185,8 @@ export default function CompanyDashboard() {
     try {
       const queryText = searchTerm.trim();
       
-      // Buscar em uma única query otimizada usando índices GIN
+      // Buscar registros com filtro apenas nos campos da tabela principal
+      // PostgREST não suporta filtros em tabelas relacionadas no 'or'
       let query = supabase
         .from('registrations')
         .select(`
@@ -202,15 +203,49 @@ export default function CompanyDashboard() {
             prizes(name, description, prize_value),
             companies(name, contact_phone)
           )
-        `);
+        `)
+        .or(`customer_phone.ilike.*${queryText}*,customer_name.ilike.*${queryText}*,customer_email.ilike.*${queryText}*`);
       
       // Se não for admin ou se tiver companyId, filtrar por empresa
       if (companyId) {
         query = query.eq('scratch_cards.company_id', companyId);
       }
       
-      const { data: registrations, error } = await query
-        .or(`customer_phone.ilike.*${queryText}*,customer_name.ilike.*${queryText}*,scratch_cards.serial_code.ilike.*${queryText}*`);
+      let { data: registrations, error } = await query;
+      
+      // Se não encontrou, buscar também pelo serial_code da raspadinha
+      if ((!registrations || registrations.length === 0) && !error) {
+        const { data: scratchData } = await supabase
+          .from('scratch_cards')
+          .select(`
+            id,
+            serial_code,
+            status,
+            company_id,
+            prizes(name, description, prize_value),
+            companies(name, contact_phone),
+            registrations(id, customer_name, customer_phone, customer_email, registered_at)
+          `)
+          .ilike('serial_code', `*${queryText}*`)
+          .not('registrations', 'is', null);
+        
+        if (scratchData && scratchData.length > 0) {
+          // Converter formato para o esperado
+          registrations = scratchData.flatMap(sc => 
+            (sc.registrations || []).map((reg: any) => ({
+              ...reg,
+              scratch_cards: {
+                id: sc.id,
+                serial_code: sc.serial_code,
+                status: sc.status,
+                company_id: sc.company_id,
+                prizes: sc.prizes,
+                companies: sc.companies
+              }
+            }))
+          );
+        }
+      }
 
       if (error) throw error;
 
