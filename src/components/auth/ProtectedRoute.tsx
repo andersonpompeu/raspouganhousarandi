@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
   const { user, loading } = useAuth();
-  const { role, loading: roleLoading } = useUserRole(user?.id);
+  const { role, loading: roleLoading } = useUserRole(user?.id, loading);
 
   console.log('[ProtectedRoute] State:', { 
     user: !!user, 

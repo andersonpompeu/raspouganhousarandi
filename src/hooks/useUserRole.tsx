@@ -9,7 +9,7 @@ interface UserRoleData {
   loading: boolean;
 }
 
-export const useUserRole = (userId: string | undefined) => {
+export const useUserRole = (userId: string | undefined, authLoading: boolean = false) => {
   const [roleData, setRoleData] = useState<UserRoleData>({
     role: null,
     companyId: null,
@@ -17,6 +17,12 @@ export const useUserRole = (userId: string | undefined) => {
   });
 
   useEffect(() => {
+    // Se auth ainda está carregando, mantém loading true
+    if (authLoading) {
+      return;
+    }
+
+    // Se não há userId e auth terminou, não há role
     if (!userId) {
       setRoleData({ role: null, companyId: null, loading: false });
       return;
@@ -43,7 +49,7 @@ export const useUserRole = (userId: string | undefined) => {
     };
 
     fetchRole();
-  }, [userId]);
+  }, [userId, authLoading]);
 
   return roleData;
 };
