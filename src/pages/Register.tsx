@@ -458,7 +458,7 @@ const Register = () => {
               <div className="flex gap-2 mt-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant={showScanner ? "default" : "outline"}
                   onClick={() => setShowScanner(true)}
                   className="flex-1"
                 >
@@ -467,10 +467,9 @@ const Register = () => {
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant={!showScanner ? "default" : "outline"}
                   onClick={() => setShowScanner(false)}
                   className="flex-1"
-                  disabled={!showScanner}
                 >
                   <Keyboard className="mr-2 h-4 w-4" />
                   Digitar Código
