@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, DollarSign } from "lucide-react";
+import { TrendingUp, DollarSign, Ticket, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { StatsCard } from "./StatsCard";
 
 const sb = supabase as any;
 
@@ -9,32 +9,42 @@ export const StatsCards = () => {
   const [stats, setStats] = useState({
     companyProfit: 0,
     platformCommission: 0,
+    totalCards: 0,
+    totalRegistrations: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Buscar todos os prêmios com percentual de comissão
+        // Fetch prizes
         const { data: prizes } = await sb
           .from("prizes")
           .select("id, prize_value, platform_commission_percentage");
 
         const allPrizes = prizes || [];
 
-        // Buscar todas as raspadinhas vendidas/resgatadas
+        // Fetch scratch cards
         const { data: scratchCards } = await sb
           .from("scratch_cards")
-          .select("prize_id, status")
-          .in("status", ["registered", "redeemed"]);
+          .select("prize_id, status");
 
-        const soldCards = scratchCards || [];
+        const allCards = scratchCards || [];
+        const soldCards = allCards.filter((c: any) => 
+          c.status === "registered" || c.status === "redeemed"
+        );
 
-        // Calcular totais baseado nas raspadinhas vendidas com comissão customizada
+        // Fetch registrations count
+        const { count: registrationsCount } = await sb
+          .from("registrations")
+          .select("*", { count: "exact", head: true });
+
+        // Calculate totals
         let totalCommission = 0;
         let totalProfit = 0;
 
         for (const card of soldCards) {
-          const prize = allPrizes.find(p => p.id === card.prize_id);
+          const prize = allPrizes.find((p: any) => p.id === card.prize_id);
           if (prize) {
             const prizeValue = Number(prize.prize_value || 0);
             const commissionPercentage = Number(prize.platform_commission_percentage || 10);
@@ -49,56 +59,66 @@ export const StatsCards = () => {
         setStats({
           companyProfit: totalProfit,
           platformCommission: totalCommission,
+          totalCards: allCards.length,
+          totalRegistrations: registrationsCount || 0,
         });
       } catch (error) {
         console.error("Error fetching stats:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchStats();
   }, []);
 
-  return (
-    <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-      <Card className="shadow-card hover:shadow-glow transition-all">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Lucro das Empresas
-          </CardTitle>
-          <TrendingUp className="w-4 h-4 text-green-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold text-green-600">
-            R$ {stats.companyProfit.toLocaleString("pt-BR", { 
-              minimumFractionDigits: 2, 
-              maximumFractionDigits: 2 
-            })}
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Lucro total das empresas (valor - comissão)
-          </p>
-        </CardContent>
-      </Card>
+  const formatCurrency = (value: number) => {
+    return `R$ ${value.toLocaleString("pt-BR", { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    })}`;
+  };
 
-      <Card className="shadow-card hover:shadow-glow transition-all border-blue-200 bg-blue-50/50">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-blue-900">
-            Comissão da Plataforma
-          </CardTitle>
-          <DollarSign className="w-4 h-4 text-blue-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold text-blue-600">
-            R$ {stats.platformCommission.toLocaleString("pt-BR", { 
-              minimumFractionDigits: 2, 
-              maximumFractionDigits: 2 
-            })}
-          </div>
-          <p className="text-xs text-blue-900 mt-2">
-            Comissão baseada nos percentuais configurados
-          </p>
-        </CardContent>
-      </Card>
+  if (loading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-32 rounded-lg bg-muted shimmer" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <StatsCard
+        title="Lucro das Empresas"
+        value={formatCurrency(stats.companyProfit)}
+        description="Total baseado em vendas"
+        icon={TrendingUp}
+        variant="success"
+      />
+      <StatsCard
+        title="Comissão da Plataforma"
+        value={formatCurrency(stats.platformCommission)}
+        description="Percentual configurado por prêmio"
+        icon={DollarSign}
+        variant="primary"
+      />
+      <StatsCard
+        title="Total de Raspadinhas"
+        value={stats.totalCards.toLocaleString("pt-BR")}
+        description="Criadas no sistema"
+        icon={Ticket}
+        variant="default"
+      />
+      <StatsCard
+        title="Cadastros Realizados"
+        value={stats.totalRegistrations.toLocaleString("pt-BR")}
+        description="Clientes participantes"
+        icon={Users}
+        variant="default"
+      />
     </div>
   );
 };
