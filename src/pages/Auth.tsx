@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles } from "lucide-react";
+import { Ticket, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -15,7 +16,6 @@ const Auth = () => {
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [signupData, setSignupData] = useState({ email: "", password: "", fullName: "" });
 
-  // Verificar se já está autenticado e redirecionar
   useEffect(() => {
     const checkAuth = async () => {
       console.log('[Auth] Checking authentication...');
@@ -23,7 +23,6 @@ const Auth = () => {
       
       if (session) {
         console.log('[Auth] User is authenticated, checking role...');
-        // Verificar role
         const { data: roleData } = await supabase
           .from('user_roles')
           .select('role')
@@ -60,7 +59,6 @@ const Auth = () => {
 
       if (error) throw error;
 
-      // Verificar role do usuário
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
@@ -75,7 +73,6 @@ const Auth = () => {
 
       toast.success("Login realizado com sucesso!");
       
-      // Redirecionar baseado no role
       if (roleData.role === 'admin') {
         navigate("/dashboard");
       } else if (roleData.role === 'company_partner') {
@@ -110,7 +107,6 @@ const Auth = () => {
       if (error) throw error;
 
       toast.success("Conta criada! Um administrador precisa atribuir permissões antes do primeiro acesso.");
-      // Não redireciona automaticamente, usuário precisa fazer login após ter role atribuído
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar conta");
     } finally {
@@ -120,110 +116,144 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="max-w-md w-full shadow-glow">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mb-4">
-            <Sparkles className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <CardTitle className="text-2xl">Acesso Administrativo</CardTitle>
-          <CardDescription>
-            Sistema de Gestão de Raspadinhas Premiadas
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Cadastro</TabsTrigger>
-            </TabsList>
+      <div className="w-full max-w-md animate-fade-in">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link to="/" className="inline-flex items-center gap-2 font-semibold text-lg">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+              <Ticket className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span>Raspadinhas</span>
+          </Link>
+        </div>
 
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">E-mail</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={loginData.email}
-                    onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                    required
-                  />
-                </div>
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-xl">Acesso ao Sistema</CardTitle>
+            <CardDescription>
+              Entre ou crie uma conta para continuar
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="login">Entrar</TabsTrigger>
+                <TabsTrigger value="signup">Cadastrar</TabsTrigger>
+              </TabsList>
 
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Senha</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                    required
-                  />
-                </div>
+              <TabsContent value="login" className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">E-mail</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={loginData.email}
+                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                      required
+                      className="h-11"
+                    />
+                  </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-primary hover:opacity-90"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Entrando..." : "Entrar"}
-                </Button>
-              </form>
-            </TabsContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Senha</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={loginData.password}
+                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                      required
+                      className="h-11"
+                    />
+                  </div>
 
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nome Completo</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="Seu nome"
-                    value={signupData.fullName}
-                    onChange={(e) => setSignupData({ ...signupData, fullName: e.target.value })}
-                    required
-                  />
-                </div>
+                  <Button
+                    type="submit"
+                    className="w-full h-11"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Entrando...
+                      </>
+                    ) : (
+                      "Entrar"
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
 
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">E-mail</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={signupData.email}
-                    onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                    required
-                  />
-                </div>
+              <TabsContent value="signup" className="space-y-4">
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Nome Completo</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="Seu nome"
+                      value={signupData.fullName}
+                      onChange={(e) => setSignupData({ ...signupData, fullName: e.target.value })}
+                      required
+                      className="h-11"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    value={signupData.password}
-                    onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                    required
-                    minLength={6}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">E-mail</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={signupData.email}
+                      onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                      required
+                      className="h-11"
+                    />
+                  </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-primary hover:opacity-90"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Criando conta..." : "Criar Conta"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Senha</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={signupData.password}
+                      onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                      required
+                      minLength={6}
+                      className="h-11"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-11"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Criando conta...
+                      </>
+                    ) : (
+                      "Criar Conta"
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          <Link to="/" className="hover:text-primary transition-colors">
+            ← Voltar para o início
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };
