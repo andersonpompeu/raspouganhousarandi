@@ -32,8 +32,7 @@ export default function CompanyDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [attendantName, setAttendantName] = useState("");
   const [notes, setNotes] = useState("");
-  const [documentType, setDocumentType] = useState("");
-  const [documentNumber, setDocumentNumber] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [scratchCard, setScratchCard] = useState<any>(null);
   const [redemptionSuccess, setRedemptionSuccess] = useState(false);
@@ -368,8 +367,7 @@ export default function CompanyDashboard() {
       setTimeout(() => {
         setSearchQuery("");
         setNotes("");
-        setDocumentType("");
-        setDocumentNumber("");
+        setCustomerPhone("");
         setScratchCard(null);
         setWhatsappStatus('idle');
         setRedemptionSuccess(false);
@@ -482,20 +480,28 @@ export default function CompanyDashboard() {
                   <Label htmlFor="attendant">Atendente (opcional)</Label>
                   <Input id="attendant" value={attendantName} onChange={e => setAttendantName(e.target.value)} placeholder="Seu nome" className="h-11" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="documentType">Tipo de Documento</Label>
-                    <select id="documentType" value={documentType} onChange={e => setDocumentType(e.target.value)} className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                      <option value="">Selecione</option>
-                      <option value="cpf">CPF</option>
-                      <option value="rg">RG</option>
-                      <option value="cnh">CNH</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="documentNumber">Número do Documento</Label>
-                    <Input id="documentNumber" value={documentNumber} onChange={e => setDocumentNumber(e.target.value)} placeholder="Digite o número" className="h-11" />
-                  </div>
+                <div>
+                  <Label htmlFor="customerPhone">Telefone Celular (opcional)</Label>
+                  <Input 
+                    id="customerPhone" 
+                    value={customerPhone} 
+                    onChange={e => {
+                      // Format phone with DDD mask: (XX) XXXXX-XXXX
+                      const value = e.target.value.replace(/\D/g, '');
+                      let formatted = value;
+                      if (value.length <= 2) {
+                        formatted = value;
+                      } else if (value.length <= 7) {
+                        formatted = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+                      } else {
+                        formatted = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7, 11)}`;
+                      }
+                      setCustomerPhone(formatted);
+                    }}
+                    placeholder="(XX) XXXXX-XXXX" 
+                    className="h-11"
+                    maxLength={16}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="notes">Observações (opcional)</Label>
