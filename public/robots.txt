@@ -1,8 +1,13 @@
+# Robots.txt - Raspadinhas Premiadas
+# https://raspouganhousarandi.lovable.app
+
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Bingbot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Twitterbot
 Allow: /
@@ -10,5 +15,20 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
 User-agent: *
 Allow: /
+Crawl-delay: 2
+
+# Bloquear páginas privadas/admin
+Disallow: /dashboard
+Disallow: /company
+Disallow: /auth
+
+# Sitemap
+Sitemap: https://raspouganhousarandi.lovable.app/sitemap.xml
